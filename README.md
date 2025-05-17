@@ -12,7 +12,7 @@ If this is something I want to continue working on, I *might* just continue work
 
 ## Dependencies:
 
-The Vulkan SDK: functions are dynamically loaded, meaning you'll need the VulkanSDK by LunarG to run this.
-vk-sys: this is an **EXTREMELY** light wrapper around vulkan. 
-libloading: this is used to dynamically load in vulkan and it's function pointers.
-minifb: this is used to create the window
+The Vulkan SDK: functions are dynamically loaded, meaning you'll need the VulkanSDK by LunarG to run this. \
+vk-sys: this is an **EXTREMELY** light wrapper around vulkan. \
+libloading: this is used to dynamically load in vulkan and it's function pointers. \
+minifb: this is used to create the window. \
