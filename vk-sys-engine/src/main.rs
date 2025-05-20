@@ -1,3 +1,8 @@
+// Stopping Rust Compiler from complaning
+#![warn(unsafe_op_in_unsafe_fn)]
+#![warn(used_mut)]
+#![warn(unsed_variables)]
+
 // Personal file loading
 mod vulkan_loader;
 use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan, return_vulkan_item};
@@ -6,21 +11,25 @@ use utils::mod_utils::{make_version, parse_version};
 mod create_window;
 use create_window::mod_window::window_creation;
 mod return_pfns;
-use return_pfns::mod_return_pfns::{return_entry_points, return_instance_pointers};
+use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointers};
+mod vk_debugger;
+use vk_debugger::mod_vk_debugger::return_validation;
 // Standard Library Imports
 use std::mem::zeroed;
 use std::os::raw::c_char;
-use std::ptr::{null, null_mut};
+use core::ptr::{null, null_mut};
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
-    InstanceCreateInfo, InstancePointers, Result, STRUCTURE_TYPE_APPLICATION_INFO,
-    STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS, AllocationCallbacks
+    AllocationCallbacks, ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
+    InstanceCreateInfo, InstancePointers, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
+    STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
 };
+
+const VALIDATION: bool = return_validation();
 
 struct VkSysEngine;
 
@@ -29,11 +38,15 @@ impl VkSysEngine {
         window_creation(800, 600);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let entry_points: EntryPoints = unsafe { return_entry_points(&vulkan_lib) };
-        let instance_pointers: InstancePointers = unsafe { return_instance_pointers(&vulkan_lib) };
+        let (instance_extensions, instance_extensions_count): (Vec<ExtensionProperties>, u32) =
+            Self::return_instance_extensions;
+        let (instance_layers, instance_layers_count): (Vec<LayerProperties>, u32) =
+            Self::return_instance_layers;
+        //let instance_pointers: InstancePointers = unsafe { return_instance_pointers(&vulkan_lib) };
         let instance: Instance = Self::create_instance(entry_points);
         Self::main_loop();
         unsafe {
-            Self::cleanup(vulkan_lib, instance_pointers, null(), instance);
+            Self::cleanup(vulkan_lib); //instance_pointers, null(), instance);
         }
     }
 
@@ -107,29 +120,79 @@ impl VkSysEngine {
             extensions_vec.as_mut_ptr(),
         );
 
-        if extension_count_result == SUCCESS {
-            println!("Extension Checking Successful");
+        if extension_count_result == 0 {
+            if extensions_result == 0 {
+                println!("Extension Checking Successful");
+                return (extensions_vec, extension_count);
+            } else {
+                panic!("Extension Checking Failed!");
+            }
         } else {
             panic!("Extension Checking Failed!");
         }
+    }
 
-        return (extensions_vec, extension_count);
+    unsafe fn return_instance_layers(
+        entry_pointers: EntryPoints,
+        crash_on_failure: bool,
+    ) -> (Vec<LayerProperties>, u32) {
+        let mut layer_count: u32 = 0u32;
+
+        let layer_counting_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
+            &entry_pointers,
+            layer_count as *mut u32,
+            null_mut(),
+        );
+
+        let mut layers_vec: Vec<LayerProperties> = Vec::with_capacity(20);
+
+        let layers_vec_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
+            &entry_pointers,
+            layer_count as *mut u32,
+            layers_vec.as_mut_ptr(),
+        );
+
+        if layers_vec_result == 0 {
+            println!("Layer Checking Successful");
+            return (layers_vec, layer_count);
+        } else {
+            if !crash_on_failure {
+                eprintln!("Layer Checking Failed");
+                return (layers_vec, 0);
+            } else {
+                panic!("Layer Checking Failed, Crash Demanded");
+            }
+        }
     }
 
     fn main_loop() {}
 
     unsafe fn cleanup(
         lib: Library,
-        instance_pointers: InstancePointers,
-        allocation_callbacks: *const AllocationCallbacks,
-        instance: Instance,
+        //instance_pointers: InstancePointers,
+        //allocation_callbacks: *const AllocationCallbacks,
+        //instance: Instance,
     ) {
         let _ = close_vulkan(lib);
-        InstancePointers::DestroyInstance(&instance_pointers, instance, allocation_callbacks);
+        // InstancePointers::DestroyInstance(&instance_pointers, instance, allocation_callbacks);
     }
 }
 
 fn main() {
     VkSysEngine.run();
     println!("Working so far");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_test() {
+        if cfg!(debug_assertions) {
+            assert_eq!(VALIDATION, true);
+        } else {
+            assert_eq!(VALIDATION, false);
+        }
+    }
 }
