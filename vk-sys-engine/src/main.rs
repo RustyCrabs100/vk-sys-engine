@@ -16,8 +16,8 @@ mod vk_debugger;
 use vk_debugger::mod_vk_debugger::return_validation;
 // Standard Library Imports
 use core::ptr::{null, null_mut};
-use std::mem::zeroed;
-use std::os::raw::c_char;
+use core::mem::zeroed;
+use core::ffi::c_char;
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;

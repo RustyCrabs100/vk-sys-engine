@@ -6,7 +6,7 @@
 pub mod mod_vk_debugger {
     use core::ptr::copy_nonoverlapping;
     use std::alloc::{Layout, alloc};
-    use std::os::raw::c_void;
+    use core::ffi::c_void;
     use vk_sys::SystemAllocationScope;
 
     pub const fn return_validation() -> bool {
