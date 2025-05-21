@@ -4,8 +4,8 @@
 #![warn(unused_variables)]
 
 pub mod mod_utils {
-    use std::io::Read;
-    use std::os::raw::c_char;
+    
+    
 
     pub fn make_version(major: u8, minor: u8, patch: u16, build: u8) -> u32 {
         ((major as u32) << 24) | ((minor as u32) << 16) | ((patch as u32) << 8) | (build as u32)

@@ -5,9 +5,9 @@
 
 // Personal file loading
 mod vulkan_loader;
-use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan, return_vulkan_item};
+use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan};
 mod utils;
-use utils::mod_utils::{make_version, parse_version};
+use utils::mod_utils::make_version;
 mod create_window;
 use create_window::mod_window::window_creation;
 mod return_pfns;
@@ -24,8 +24,8 @@ use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    AllocationCallbacks, ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
-    InstanceCreateInfo, InstancePointers, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
+    ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
+    InstanceCreateInfo, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
     STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
 };
 
@@ -123,7 +123,7 @@ impl VkSysEngine {
 
     unsafe fn return_instance_extensions(
         entry_pointers: &EntryPoints,
-    ) -> (Vec<ExtensionProperties>, u32) {
+    ) -> (Vec<ExtensionProperties>, u32) { unsafe {
         let mut extension_count: u32 = 0;
 
         let extension_count_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
@@ -153,12 +153,12 @@ impl VkSysEngine {
         } else {
             panic!("Extension Checking Failed!");
         }
-    }
+    }}
 
     unsafe fn return_instance_layers(
         entry_pointers: &EntryPoints,
         crash_on_failure: bool,
-    ) -> (Vec<LayerProperties>, u32) {
+    ) -> (Vec<LayerProperties>, u32) { unsafe {
         let mut layer_count: u32 = 0u32;
 
         let layer_counting_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
@@ -187,7 +187,7 @@ impl VkSysEngine {
                 panic!("Layer Checking Failed, Crash Demanded");
             }
         }
-    }
+    }}
 
     fn main_loop() {}
 

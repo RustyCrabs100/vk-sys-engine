@@ -4,12 +4,12 @@
 #![warn(unused_variables)]
 
 pub mod mod_return_pfns {
-    use core::ptr::null_mut;
+    
     use libloading::Library;
-    use libloading::Symbol;
-    use std::mem::transmute;
-    use vk_sys::{DevicePointers, EntryPoints, InstancePointers, Result};
-    pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
+    
+    
+    use vk_sys::{DevicePointers, EntryPoints};
+    pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints { unsafe {
         return EntryPoints {
             CreateInstance: *lib
                 .get(b"vkCreateInstance\0")
@@ -21,7 +21,7 @@ pub mod mod_return_pfns {
                 .get(b"vkEnumerateInstanceLayerProperties\0")
                 .expect("Failed to load vkEnumerateInstanceLayerProperties"),
         };
-    }
+    }}
     /*
     pub unsafe fn return_instance_pointers(lib: &Library) -> InstancePointers {
         unsafe {

@@ -4,8 +4,8 @@
 #![warn(unused_variables)]
 
 pub mod mod_vk_debugger {
-    use core::ptr::{copy_nonoverlapping, null_mut};
-    use std::alloc::{Layout, alloc, dealloc};
+    use core::ptr::copy_nonoverlapping;
+    use std::alloc::{Layout, alloc};
     use std::os::raw::c_void;
     use vk_sys::SystemAllocationScope;
 
