@@ -1,3 +1,8 @@
+// Stopping Rust Compiler from complaning
+#![warn(unsafe_op_in_unsafe_fn)]
+#![warn(unused_mut)]
+#![warn(unused_variables)]
+
 pub mod mod_vk_debugger {
     use core::ptr::{copy_nonoverlapping, null_mut};
     use std::alloc::{Layout, alloc, dealloc};

@@ -1,8 +1,13 @@
+// Stopping Rust Compiler from complaning
+#![warn(unsafe_op_in_unsafe_fn)]
+#![warn(unused_mut)]
+#![warn(unused_variables)]
+
 pub mod mod_return_pfns {
+    use core::ptr::null_mut;
     use libloading::Library;
     use libloading::Symbol;
     use std::mem::transmute;
-    use core::ptr::null_mut;
     use vk_sys::{DevicePointers, EntryPoints, InstancePointers, Result};
     pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
         return EntryPoints {

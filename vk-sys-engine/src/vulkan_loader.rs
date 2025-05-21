@@ -1,4 +1,8 @@
 // should not need to modify any code
+// Stopping Rust Compiler from complaning
+#![warn(unsafe_op_in_unsafe_fn)]
+#![warn(unused_mut)]
+#![warn(unused_variables)]
 
 pub mod mod_vulkan_loader {
     use libloading;

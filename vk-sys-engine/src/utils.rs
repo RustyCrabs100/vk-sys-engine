@@ -1,3 +1,8 @@
+// Stopping Rust Compiler from complaning
+#![warn(unsafe_op_in_unsafe_fn)]
+#![warn(unused_mut)]
+#![warn(unused_variables)]
+
 pub mod mod_utils {
     use std::io::Read;
     use std::os::raw::c_char;
