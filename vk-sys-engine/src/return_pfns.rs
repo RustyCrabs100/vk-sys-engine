@@ -4,6 +4,23 @@
 #![warn(unused_variables)]
 
 pub mod mod_return_pfns {
+    // Macro used to create a dummy function. Did not yet test.
+    #[macro_export]
+    macro_rules! vk_dummy_pfn_creator {
+        ($fn_name:ident, $ptr_name:ident, ($($arg:ident : $type:ty), *), -> $return_ty:ty) => {
+            extern "system" fn $fn_name($($arg: $type), *) -> $return_ty {{
+                eprintln!(concat!(stringify!($fn_name), "called Dummy Function for Vulkan."));
+                vk_sys::Result::SUCCESS
+            }
+            $fn_name as extern "system" fn($($type),*) -> $return_ty
+        }};
+        ($fn_name:ident, $ptr_name:ident, ($($arg:ident : $type:ty), *)) => {{
+            extern "system" fn $fn_name($($arg: $type), *) {
+                eprintln!(concat!(stringify!($fn_name), "called Dummy Function for Vulkan."));
+            }
+            $fn_name as extern "system" fn($($type),*) -> $return_ty
+        }};
+    }
     
     use libloading::Library;
     

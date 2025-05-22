@@ -209,6 +209,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use core::ffi::c_void;
     use super::*;
 
     #[test]
@@ -218,5 +219,11 @@ mod tests {
         } else {
             assert_eq!(VALIDATION, false);
         }
+    }
+
+    #[test]
+    fn macro_dummy_test() {
+        let dummy_fn: extern "system" fn(c_void, c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, fn_utils_ptr, (a: c_void, b: c_void), -> *mut c_void);
+        
     }
 }
