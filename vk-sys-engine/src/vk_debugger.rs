@@ -4,9 +4,9 @@
 #![warn(unused_variables)]
 
 pub mod mod_vk_debugger {
+    use core::ffi::c_void;
     use core::ptr::copy_nonoverlapping;
     use std::alloc::{Layout, alloc};
-    use core::ffi::c_void;
     use vk_sys::SystemAllocationScope;
 
     pub const fn return_validation() -> bool {

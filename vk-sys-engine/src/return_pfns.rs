@@ -4,41 +4,43 @@
 #![warn(unused_variables)]
 
 pub mod mod_return_pfns {
-    // Macro used to create a dummy function. Did not yet test.
+
     #[macro_export]
     macro_rules! vk_dummy_pfn_creator {
-        ($fn_name:ident, $ptr_name:ident, ($($arg:ident : $type:ty), *), -> $return_ty:ty) => {
-            extern "system" fn $fn_name($($arg: $type), *) -> $return_ty {{
-                eprintln!(concat!(stringify!($fn_name), "called Dummy Function for Vulkan."));
-                vk_sys::Result::SUCCESS
+        ($name:ident, ($($arg:ident: $type_input:ty),*), $ret:ty, $ret_val:expr) => {{
+            extern "system" fn $name($($arg: $type_input),*) -> $ret {
+                eprintln!("Dummy function called in place for {}", stringify!($name));
+                $ret_val
             }
-            $fn_name as extern "system" fn($($type),*) -> $return_ty
+            $name as extern "system" fn($($type_input),*) -> $ret
         }};
-        ($fn_name:ident, $ptr_name:ident, ($($arg:ident : $type:ty), *)) => {{
-            extern "system" fn $fn_name($($arg: $type), *) {
-                eprintln!(concat!(stringify!($fn_name), "called Dummy Function for Vulkan."));
+
+        ($name:ident, ($($arg:ident: $type_input:ty),*)) => {{
+            extern "system" fn $name($($arg: $type_input),*) {
+                eprintln!("Dummy function called in place for {}", stringify!($name));
             }
-            $fn_name as extern "system" fn($($type),*) -> $return_ty
+            $name as extern "system" fn($($type_input),*)
         }};
     }
-    
+
     use libloading::Library;
-    
-    
+
     use vk_sys::{DevicePointers, EntryPoints};
-    pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints { unsafe {
-        return EntryPoints {
-            CreateInstance: *lib
-                .get(b"vkCreateInstance\0")
-                .expect("Failed to load vkCreateInstance"),
-            EnumerateInstanceExtensionProperties: *lib
-                .get(b"vkEnumerateInstanceExtensionProperties\0")
-                .expect("Failed to load vkEnumerateInstanceExtensionProperties"),
-            EnumerateInstanceLayerProperties: *lib
-                .get(b"vkEnumerateInstanceLayerProperties\0")
-                .expect("Failed to load vkEnumerateInstanceLayerProperties"),
-        };
-    }}
+    pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
+        unsafe {
+            return EntryPoints {
+                CreateInstance: *lib
+                    .get(b"vkCreateInstance\0")
+                    .expect("Failed to load vkCreateInstance"),
+                EnumerateInstanceExtensionProperties: *lib
+                    .get(b"vkEnumerateInstanceExtensionProperties\0")
+                    .expect("Failed to load vkEnumerateInstanceExtensionProperties"),
+                EnumerateInstanceLayerProperties: *lib
+                    .get(b"vkEnumerateInstanceLayerProperties\0")
+                    .expect("Failed to load vkEnumerateInstanceLayerProperties"),
+            };
+        }
+    }
     /*
     pub unsafe fn return_instance_pointers(lib: &Library) -> InstancePointers {
         unsafe {

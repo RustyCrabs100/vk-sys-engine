@@ -15,18 +15,18 @@ use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointe
 mod vk_debugger;
 use vk_debugger::mod_vk_debugger::return_validation;
 // Standard Library Imports
-use core::ptr::{null, null_mut};
-use core::mem::zeroed;
 use core::ffi::c_char;
+use core::mem::zeroed;
+use core::ptr::{null, null_mut};
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
-    InstanceCreateInfo, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
-    STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
+    ApplicationInfo, EntryPoints, ExtensionProperties, Instance, InstanceCreateInfo,
+    LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+    SUCCESS,
 };
 
 const VALIDATION: bool = return_validation();
@@ -46,9 +46,9 @@ impl VkSysEngine {
         let instance_layers_vec: Vec<*const c_char> = instance_layers
             .iter()
             .map(|f| f.layerName.as_ptr())
-            .collect::<Vec<_>>();    
+            .collect::<Vec<_>>();
 
-        let instance_extensions_vec : Vec<*const c_char> = instance_extensions
+        let instance_extensions_vec: Vec<*const c_char> = instance_extensions
             .iter()
             .map(|f| f.extensionName.as_ptr())
             .collect::<Vec<_>>();
@@ -123,71 +123,79 @@ impl VkSysEngine {
 
     unsafe fn return_instance_extensions(
         entry_pointers: &EntryPoints,
-    ) -> (Vec<ExtensionProperties>, u32) { unsafe {
-        let mut extension_count: u32 = 0;
+    ) -> (Vec<ExtensionProperties>, u32) {
+        unsafe {
+            let mut extension_count: u32 = 0;
 
-        let extension_count_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
-            entry_pointers,
-            null(),
-            &mut extension_count,
-            null_mut(),
-        );
+            let extension_count_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
+                entry_pointers,
+                null(),
+                &mut extension_count,
+                null_mut(),
+            );
 
-        let mut extensions_vec: Vec<ExtensionProperties> = Vec::with_capacity(extension_count as usize);
-        extensions_vec.set_len(extension_count as usize);
+            let mut extensions_vec: Vec<ExtensionProperties> =
+                Vec::with_capacity(extension_count as usize);
+            extensions_vec.set_len(extension_count as usize);
 
-        let extensions_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
-            entry_pointers,
-            null(),
-            &mut extension_count,
-            extensions_vec.as_mut_ptr(),
-        );
+            let extensions_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
+                entry_pointers,
+                null(),
+                &mut extension_count,
+                extensions_vec.as_mut_ptr(),
+            );
 
-        if extension_count_result == SUCCESS {
+            if extension_count_result == SUCCESS {
+                println!("Extension Counting Successful")
+            } else {
+                panic!("Extension Checking Failed!");
+            }
+
             if extensions_result == SUCCESS {
                 println!("Extension Checking Successful");
                 return (extensions_vec, extension_count);
             } else {
                 panic!("Extension Checking Failed!");
             }
-        } else {
-            panic!("Extension Checking Failed!");
         }
-    }}
+    }
 
     unsafe fn return_instance_layers(
         entry_pointers: &EntryPoints,
         crash_on_failure: bool,
-    ) -> (Vec<LayerProperties>, u32) { unsafe {
-        let mut layer_count: u32 = 0u32;
+    ) -> (Vec<LayerProperties>, u32) {
+        unsafe {
+            let mut layer_count: u32 = 0u32;
 
-        let layer_counting_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
-            entry_pointers,
-            &mut layer_count,
-            null_mut(),
-        );
+            let layer_counting_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
+                entry_pointers,
+                &mut layer_count,
+                null_mut(),
+            );
 
-        let mut layers_vec: Vec<LayerProperties> = Vec::with_capacity(layer_count as usize);
-        layers_vec.set_len(layer_count as usize);
+            let mut layers_vec: Vec<LayerProperties> = Vec::with_capacity(layer_count as usize);
+            layers_vec.set_len(layer_count as usize);
 
-        let layers_vec_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
-            entry_pointers,
-            &mut layer_count,
-            layers_vec.as_mut_ptr(),
-        );
+            let layers_vec_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
+                entry_pointers,
+                &mut layer_count,
+                layers_vec.as_mut_ptr(),
+            );
 
-        if layers_vec_result == SUCCESS {
-            println!("Layer Checking Successful");
-            return (layers_vec, layer_count);
-        } else {
-            if !crash_on_failure {
+            if layers_vec_result == SUCCESS {
+                println!("Layer Checking Successful");
+                return (layers_vec, layer_count);
+            } else {
                 eprintln!("Layer Checking Failed");
+            }
+
+            if !crash_on_failure {
                 return (layers_vec, 0);
             } else {
                 panic!("Layer Checking Failed, Crash Demanded");
             }
         }
-    }}
+    }
 
     fn main_loop() {}
 
@@ -209,8 +217,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use core::ffi::c_void;
     use super::*;
+    use core::ffi::c_void;
 
     #[test]
     fn validation_test() {
@@ -222,8 +230,13 @@ mod tests {
     }
 
     #[test]
-    fn macro_dummy_test() {
-        let dummy_fn: extern "system" fn(c_void, c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, fn_utils_ptr, (a: c_void, b: c_void), -> *mut c_void);
-        
+    fn macro_dummy_test_full() {
+        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
+    }
+
+    #[test]
+    fn macro_dummy_test_nret() {
+        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) =
+            vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void));
     }
 }
