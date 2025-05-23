@@ -18,6 +18,7 @@ use vk_debugger::mod_vk_debugger::return_validation;
 use core::ffi::c_char;
 use core::mem::zeroed;
 use core::ptr::{null, null_mut};
+use std::alloc::{Layout, alloc};
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
@@ -118,7 +119,7 @@ impl VkSysEngine {
             panic!("vkCreateInstance failed, can't continue");
         }
 
-        return instance;
+        instance
     }
 
     unsafe fn return_instance_extensions(
@@ -134,16 +135,24 @@ impl VkSysEngine {
                 null_mut(),
             );
 
-            let mut extensions_vec: Vec<ExtensionProperties> =
-                Vec::with_capacity(extension_count as usize);
-            extensions_vec.set_len(extension_count as usize);
+            let extensions_vec_layout = Layout::array::<ExtensionProperties>(extension_count as usize).unwrap();
+
+            let mut extensions_vec: *mut ExtensionProperties =
+                alloc(extensions_vec_layout) as *mut ExtensionProperties;
+
+            if extensions_vec.is_null() {
+                panic!("Allocation for Extensions failed.");
+            }
 
             let extensions_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
                 entry_pointers,
                 null(),
                 &mut extension_count,
-                extensions_vec.as_mut_ptr(),
+                extensions_vec,
             );
+
+            let extensions_return_vec: Vec<ExtensionProperties> = 
+                Vec::from_raw_parts(extensions_vec, extension_count as usize, extension_count as usize);
 
             if extension_count_result == SUCCESS {
                 println!("Extension Counting Successful")
@@ -153,7 +162,7 @@ impl VkSysEngine {
 
             if extensions_result == SUCCESS {
                 println!("Extension Checking Successful");
-                return (extensions_vec, extension_count);
+                (extensions_return_vec, extension_count)
             } else {
                 panic!("Extension Checking Failed!");
             }
@@ -173,24 +182,33 @@ impl VkSysEngine {
                 null_mut(),
             );
 
-            let mut layers_vec: Vec<LayerProperties> = Vec::with_capacity(layer_count as usize);
-            layers_vec.set_len(layer_count as usize);
+            let layer_vec_layout = Layout::array::<LayerProperties>(layer_count as usize).unwrap();
+
+            let mut layers_vec: *mut LayerProperties = 
+                alloc(layer_vec_layout) as * mut LayerProperties;
+
+            if layers_vec.is_null() {
+                panic!("Allocation for Layers failed!");
+            }
 
             let layers_vec_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
                 entry_pointers,
                 &mut layer_count,
-                layers_vec.as_mut_ptr(),
+                layers_vec,
             );
+
+            let layers_return_vec: Vec<LayerProperties> = 
+                Vec::from_raw_parts(layers_vec, layer_count as usize, layer_count as usize);
 
             if layers_vec_result == SUCCESS {
                 println!("Layer Checking Successful");
-                return (layers_vec, layer_count);
+                return (layers_return_vec, layer_count)
             } else {
                 eprintln!("Layer Checking Failed");
             }
 
             if !crash_on_failure {
-                return (layers_vec, 0);
+                (layers_return_vec, 0)
             } else {
                 panic!("Layer Checking Failed, Crash Demanded");
             }
