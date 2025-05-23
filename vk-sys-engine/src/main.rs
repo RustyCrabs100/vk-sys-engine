@@ -19,6 +19,8 @@ use core::ffi::c_char;
 use core::mem::zeroed;
 use core::ptr::{null, null_mut};
 use std::alloc::{Layout, alloc};
+use std::thread;
+use std::sync::Arc;
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
@@ -38,11 +40,26 @@ impl VkSysEngine {
     pub fn run(&mut self) {
         window_creation(800, 600);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
-        let entry_points: EntryPoints = unsafe { return_entry_points(&vulkan_lib) };
-        let (instance_extensions, instance_extensions_count): (Vec<ExtensionProperties>, u32) =
-            unsafe { Self::return_instance_extensions(&entry_points) };
-        let (instance_layers, instance_layers_count): (Vec<LayerProperties>, u32) =
-            unsafe { Self::return_instance_layers(&entry_points, true) };
+        let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
+
+        let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
+        // Spawning new thread for Instance Layer & Extension Counting & Checking
+        let vk_info_handle = thread::spawn(move || {
+            println!("Running Instance Extension and Layer Counting and Collecting in Secondary Thread");
+            // Collects Instance Extensions and Extension Count
+            let (instance_extensions, instance_extensions_count) =
+                unsafe { Self::return_instance_extensions(&entry_points_copy) };
+            // Collects Instance Layers and Layer Count
+            let (instance_layers, instance_layers_count) =
+                unsafe { Self::return_instance_layers(&entry_points_copy, true) };
+            println!("Finished running Secondary Thread");
+            // Returns Instance Layers, Extensions, and their Counts.
+            (instance_extensions, instance_extensions_count, instance_layers, instance_layers_count)
+        });
+
+        // Collects info from secondary thread
+        let (instance_extensions, instance_extensions_count, instance_layers, instance_layers_count) = vk_info_handle.join().unwrap();
+
 
         let instance_layers_vec: Vec<*const c_char> = instance_layers
             .iter()
