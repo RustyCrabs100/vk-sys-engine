@@ -8,29 +8,25 @@ pub mod mod_vulkan_loader {
     use libloading;
     use std::error::Error;
 
+    /// Loads Vulkan in (Supports Multiple Platforms)
     pub unsafe fn load_vulkan() -> Result<libloading::Library, Box<dyn Error>> {
         unsafe {
-            match cfg!(target_os) {
-                windows => {
-                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
-                        Ok(libloading::Library::new("vulkan-1.dll")?);
-
-                    return vulkan_loader;
-                }
-                linux => {
-                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
-                        Ok(libloading::Library::new("libvulkan.so.1")?);
-                    return vulkan_loader;
-                }
-                macos => {
-                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
-                        Ok(libloading::Library::new("libvulkan.dylib")?);
-                    return vulkan_loader;
-                }
+            if cfg!(target_os = "windows") {
+                let vulkan_loader = Ok(libloading::Library::new("vulkan-1.dll")?);
+                return vulkan_loader;
+            } else if cfg!(target_os = "linux") {
+                let vulkan_loader = Ok(libloading::Library::new("libvulkan.so.1")?);
+                return vulkan_loader;
+            } else if cfg!(target_os = "macos") {
+                let vulkan_loader = Ok(libloading::Library::new("libvulkan.dylib")?);
+                return vulkan_loader;
+            } else {
+                panic!("Operating System not Supported!");
             }
         }
     }
 
+    /// Returns a Vulkan Item (Such as Function Pointers)
     pub unsafe fn return_vulkan_item<'a, T>(
         lib: &'a libloading::Library,
         name: &'a [u8],
@@ -42,6 +38,7 @@ pub mod mod_vulkan_loader {
         }
     }
 
+    /// Closes Vulkan
     pub fn close_vulkan(lib: libloading::Library) -> Result<(), Box<dyn Error>> {
         let _ = lib.close();
 

@@ -4,19 +4,22 @@
 #![warn(unused_variables)]
 
 pub mod mod_utils {
+    use core::ffi::c_char;
 
+    /// Returns a readable version in u32.
     pub fn make_version(major: u8, minor: u8, patch: u16, build: u8) -> u32 {
         ((major as u32) << 24) | ((minor as u32) << 16) | ((patch as u32) << 8) | (build as u32)
     }
-
-    pub fn parse_version(version: u32) -> (u8, u8, u8, u8) {
+    /// Parses a readable version in u32 into it's individual components.
+    pub fn parse_version(version: u32) -> (u8, u8, u16, u8) {
         let major = (version >> 24) as u8;
         let minor = ((version >> 16) & 0xFF) as u8;
-        let patch = ((version >> 8) & 0xFF) as u8;
+        let patch = ((version >> 8) & 0xFF) as u16;
         let build = (version & 0xFF) as u8;
         (major, minor, patch, build)
     }
 
+    /// Returns a Static c_char Array that Vulkan can read.
     #[macro_export]
     macro_rules! static_c_char_array {
         ($s:expr) => {{

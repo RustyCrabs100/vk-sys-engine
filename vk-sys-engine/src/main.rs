@@ -1,3 +1,11 @@
+//! Basic Game Engine built in Rust.
+//! 
+//! Provides a renderer and an editor for building games in Rust.
+//! This Game Engine is currently not ready for any usage, and is still being developed.
+//! 
+//! If you require a Game Engine that currently works, use Bevy. 
+
+
 // Stopping Rust Compiler from complaning
 #![warn(unsafe_op_in_unsafe_fn)]
 #![warn(unused_mut)]
@@ -13,7 +21,7 @@ use create_window::mod_window::window_creation;
 mod return_pfns;
 use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointers};
 mod vk_debugger;
-use vk_debugger::mod_vk_debugger::return_validation;
+use vk_debugger::mod_vk_debugger::{checking_validation_support, return_validation};
 // Standard Library Imports
 use core::ffi::c_char;
 use core::mem::zeroed;
@@ -33,19 +41,22 @@ use vk_sys::{
 };
 
 const VALIDATION: bool = return_validation();
-
+/// The VkSysEngine Struct allows you to manually define certain aspects of the game.
 struct VkSysEngine {
+    /// Sets window width
     window_width: usize,
+    /// Sets window height
     window_height: usize,
-    // Highest Usable Vulkan Version
+    /// Sets Highest Usable Vulkan Version
     vulkan_version: u32,
-    // Game Engine Version
+    /// Sets Game Engine Version
     engine_version: u32,
-    // Game Version
+    /// Sets Game Version
     application_version: u32,
 }
 
 impl VkSysEngine {
+    /// Begins to run the game engine
     pub fn run(&mut self) {
         window_creation(self.window_height, self.window_width);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
@@ -75,11 +86,18 @@ impl VkSysEngine {
 
         // Collects info from secondary thread
         let (
-            instance_extensions,
+            mut instance_extensions,
             instance_extensions_count,
-            instance_layers,
+            mut instance_layers,
             instance_layers_count,
         ) = vk_info_handle.join().unwrap();
+
+        if !checking_validation_support(&instance_layers) {
+            instance_layers
+                .retain(|f| f.layerName != static_c_char_array!(b"VK_LUNARG_KHRONOS_validation\0"));
+            instance_extensions
+                .retain(|f| f.extensionName != static_c_char_array!(b"VK_EXT_debug_utils\0"));
+        }
 
         let instance_layers_vec: Vec<*const c_char> = instance_layers
             .iter()
@@ -106,7 +124,7 @@ impl VkSysEngine {
             Self::cleanup(vulkan_lib); //instance_pointers, null(), instance);
         }
     }
-
+    /// Creates Vulkan Instance
     fn create_instance(
         entry_pointers: &EntryPoints,
         application_version: u32,
@@ -119,7 +137,7 @@ impl VkSysEngine {
     ) -> Instance {
         let application_name_wrapper: [c_char; 256] = static_c_char_array!(b"Rust Game Engine\0");
         let engine_name_wrapper: [c_char; 256] = static_c_char_array!(b"Rustic\0");
-
+        // Sets application info
         let app_info: ApplicationInfo = ApplicationInfo {
             sType: STRUCTURE_TYPE_APPLICATION_INFO,
             pNext: null(),
@@ -129,9 +147,9 @@ impl VkSysEngine {
             engineVersion: engine_version,
             apiVersion: vulkan_version,
         };
-
+        // wraps ApplicationInfo in a type that InstanceCreateInfo can read
         let application_info_wrapper: *const ApplicationInfo = &app_info;
-
+        // creates Instance Info
         let instance_create_info: InstanceCreateInfo = InstanceCreateInfo {
             sType: STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             pNext: null(),
@@ -142,11 +160,11 @@ impl VkSysEngine {
             enabledExtensionCount: extension_count,
             ppEnabledExtensionNames: extensions.as_ptr(),
         };
-
+        // Initalizes an empty handle to the Vulkan Instance
         let mut instance: Instance = unsafe { zeroed() };
-
+        // wraps Instance in a type that CreateInstance can use.
         let instance_pointer: *mut Instance = &mut instance;
-
+        // Creates Instance
         let result: Result = unsafe {
             EntryPoints::CreateInstance(
                 entry_pointers,
@@ -155,7 +173,7 @@ impl VkSysEngine {
                 instance_pointer,
             )
         };
-
+        // Checks if Instance Creation was successful
         if result == SUCCESS {
             println!("vkCreateInstance correctly Initalized");
         } else {
@@ -164,11 +182,12 @@ impl VkSysEngine {
 
         instance
     }
-
+    /// Returns Vulkan Instance Extensions
     unsafe fn return_instance_extensions(
         entry_pointers: &EntryPoints,
     ) -> (Vec<ExtensionProperties>, u32) {
         unsafe {
+            // Counts number of extensions
             let mut extension_count: u32 = 0;
 
             let extension_count_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
@@ -177,7 +196,7 @@ impl VkSysEngine {
                 &mut extension_count,
                 null_mut(),
             );
-
+            // Manually allocates memory for extensions
             let extensions_vec_layout =
                 Layout::array::<ExtensionProperties>(extension_count as usize).unwrap();
 
@@ -187,26 +206,26 @@ impl VkSysEngine {
             if extensions_vec.is_null() {
                 panic!("Allocation for Extensions failed.");
             }
-
+            // Gets extensions
             let extensions_result: Result = EntryPoints::EnumerateInstanceExtensionProperties(
                 entry_pointers,
                 null(),
                 &mut extension_count,
                 extensions_vec,
             );
-
+            // Gets extensions in a returnable value
             let extensions_return_vec: Vec<ExtensionProperties> = Vec::from_raw_parts(
                 extensions_vec,
                 extension_count as usize,
                 extension_count as usize,
             );
-
+            // Checks if Instance Extension Counting was successful
             if extension_count_result == SUCCESS {
                 println!("Extension Counting Successful")
             } else {
                 panic!("Extension Checking Failed!");
             }
-
+            // Checks if Instance Extension Receiving was successful
             if extensions_result == SUCCESS {
                 println!("Extension Checking Successful");
                 (extensions_return_vec, extension_count)
@@ -215,12 +234,13 @@ impl VkSysEngine {
             }
         }
     }
-
+    // Returns Vulkan Instance Layers
     unsafe fn return_instance_layers(
         entry_pointers: &EntryPoints,
         crash_on_failure: bool,
     ) -> (Vec<LayerProperties>, u32) {
         unsafe {
+            // Counts number of Layers
             let mut layer_count: u32 = 0u32;
 
             let layer_counting_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
@@ -229,6 +249,7 @@ impl VkSysEngine {
                 null_mut(),
             );
 
+            // Manually allocates memory for Layers
             let layer_vec_layout = Layout::array::<LayerProperties>(layer_count as usize).unwrap();
 
             let mut layers_vec: *mut LayerProperties =
@@ -238,15 +259,25 @@ impl VkSysEngine {
                 panic!("Allocation for Layers failed!");
             }
 
+            // Inputs data into the Layer Vector
             let layers_vec_result: Result = EntryPoints::EnumerateInstanceLayerProperties(
                 entry_pointers,
                 &mut layer_count,
                 layers_vec,
             );
 
+            // Returns Layer Vector in a returnable format.
             let layers_return_vec: Vec<LayerProperties> =
                 Vec::from_raw_parts(layers_vec, layer_count as usize, layer_count as usize);
 
+            // Checks if Layer Counting was successful
+            if layer_counting_result == SUCCESS {
+                println!("Layer Counting Successful");
+            } else {
+                eprintln!("Layer Counting Failed");
+            }
+
+            // Checks if Layer Receiving was successful
             if layers_vec_result == SUCCESS {
                 println!("Layer Checking Successful");
                 return (layers_return_vec, layer_count);
@@ -254,6 +285,10 @@ impl VkSysEngine {
                 eprintln!("Layer Checking Failed");
             }
 
+            // Code comes to this point if the above wasn't successful
+            // If the Developer does not request a Crash if the above fails
+            // It simply returns an empty vector with a count of 0
+            // Else, Panics
             if !crash_on_failure {
                 (layers_return_vec, 0)
             } else {
@@ -264,14 +299,15 @@ impl VkSysEngine {
 
     fn main_loop() {}
 
+    // Cleans up data Rust can't
     unsafe fn cleanup(
         lib: Library,
         //instance_pointers: InstancePointers,
         //allocation_callbacks: *const AllocationCallbacks,
         //instance: Instance,
     ) {
-        let _ = close_vulkan(lib);
         // InstancePointers::DestroyInstance(&instance_pointers, instance, allocation_callbacks);
+        let _ = close_vulkan(lib);
     }
 }
 
@@ -303,7 +339,8 @@ mod tests {
 
     #[test]
     fn macro_dummy_test_full() {
-        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
+        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = 
+            vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
     }
 
     #[test]

@@ -5,6 +5,7 @@
 
 pub mod mod_return_pfns {
 
+    /// Returns a Dummy Function Pointer for Vulkan
     #[macro_export]
     macro_rules! vk_dummy_pfn_creator {
         ($name:ident, ($($arg:ident: $type_input:ty),*), $ret:ty, $ret_val:expr) => {{
@@ -24,8 +25,9 @@ pub mod mod_return_pfns {
     }
 
     use libloading::Library;
-
     use vk_sys::{DevicePointers, EntryPoints};
+
+    /// Returns EntryPoints for Instance Initalization
     pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
         unsafe {
             return EntryPoints {
@@ -41,7 +43,10 @@ pub mod mod_return_pfns {
             };
         }
     }
-    /*
+    
+    /// Returns InstancePointers for Debugging, Physical Device Initalization, 
+    /// Swapchain Intialization, Image Formatting, Queue's, Surface Creations, etc
+    /* 
     pub unsafe fn return_instance_pointers(lib: &Library) -> InstancePointers {
         unsafe {
             return InstancePointers {
@@ -89,52 +94,54 @@ pub mod mod_return_pfns {
                     .expect("Failed to load vkDestroySurfaceKHR"),
                 CreateXlibSurfaceKHR: *lib
                     .get(b"vkCreateXlibSurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .map(|s|*s)
+                    .unwrap_or(vk_dummy_pfn_creator!(CreateXlibSurfaceKHR, (a: vk_sys::Instance, b: *const vk_sys::XlibSurfaceCreateInfoKHR, c: *const AllocationCallbacks, d: *mut vk_sys::SurfaceKHR), Result, 0)),
                 GetPhysicalDeviceXlibPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceXlibPresentationSupportKHR\0")
-                    .unwrap_or(vk),
+                    .map(|s| *s)
+                    .unwrap_or(vk_dummy_pfn_creator!(GetPhysicalDeviceXcbPresentationSupportKHR, (a:))),
                 CreateXcbSurfaceKHR: *lib
                     .get(b"vkCreateXcbSurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceXcbPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceXcbPresentationSupportKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateWaylandSurfaceKHR: *lib
                     .get(b"vkCreateWaylandSurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceWaylandPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceWaylandPresentationSupportKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateAndroidSurfaceKHR: *lib
                     .get(b"vkCreateAndroidSurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateWin32SurfaceKHR: *lib
                     .get(b"vkCreateWin32SurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceWin32PresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceWin32PresentationSupportKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceDisplayPropertiesKHR: *lib
                     .get(b"vkGetPhysicalDeviceDisplayPropertiesKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceDisplayPlanePropertiesKHR: *lib
                     .get(b"vkGetPhysicalDeviceDisplayPlanePropertiesKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetDisplayPlaneSupportedDisplaysKHR: *lib
                     .get(b"vkGetDisplaySupportedDisplaysKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetDisplayModePropertiesKHR: *lib
                     .get(b"vkGetDisplayModePropertiesKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateDisplayModeKHR: *lib
                     .get(b"vkCreateDisplayModeKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetDisplayPlaneCapabilitiesKHR: *lib
                     .get(b"vkGetDisplayPlaneCapabilitiesKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateDisplayPlaneSurfaceKHR: *lib
                     .get(b"vkCreateDisplayPlaneSurfaceKHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceSurfaceSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceSurfaceSupportKHR\0")
                     .expect("Failed to load vkCreateDisplayPlaneSurfaceKHR"),
@@ -149,63 +156,64 @@ pub mod mod_return_pfns {
                     .expect("Failed to load vkGetPhysicalDeviceSurfacePresentModesKHR"),
                 CreateDebugUtilsMessengerEXT: *lib
                     .get(b"vkCreateDebugUtilsMessengerEXT\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 DestroyDebugUtilsMessengerEXT: *lib
                     .get(b"vkDestroyDebugUtilsMessengerEXT\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateIOSSurfaceMVK: *lib
                     .get(b"vkCreateIOSSurfaceMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateMacOSSurfaceMVK: *lib
                     .get(b"vkCreateMacOSSurfaceMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 ActivateMoltenVKLicenseMVK: *lib
                     .get(b"vkActivateMoltenVKLicenseMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 ActivateMoltenVKLicensesMVK: *lib
                     .get(b"vkActivateMoltenVKLicensesMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetMoltenVKDeviceConfigurationMVK: *lib
                     .get(b"vkGetMoltenVKDeviceConfigurationMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 SetMoltenVKDeviceConfigurationMVK: *lib
                     .get(b"vkSetMoltenVKDeviceConfigurationMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceMetalFeaturesMVK: *lib
                     .get(b"vkGetPhysicalDeviceMetalFeaturesMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetSwapchainPerformanceMVK: *lib
                     .get(b"vkGetSwapchainPerformanceMVK\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateViSurfaceNN: *lib
                     .get(b"vkCreateViSurfaceNN\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceFeatures2KHR: *lib
                     .get(b"vkGetPhysicalDeviceFeatures2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceFormatProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceFormatProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceImageFormatProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceImageFormatProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceQueueFamilyProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceQueueFamilyFormatProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceMemoryProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceMemoryProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
                 GetPhysicalDeviceSparseImageFormatProperties2KHR: *lib
                     .get(b"vkGetPhysicalDeviceSparseImageFormatProperties2KHR\0")
-                    .unwrap_or(vk),
+                    .unwrap_or(vk_dummy_pfn_creator!()),
             };
         }
     }
     */
-
+    
+    /// Returns DevicePointers (Currenty a Stub Implementation)
     pub unsafe fn return_device_pointers(lib: &Library) -> DevicePointers {
         todo!()
     }
