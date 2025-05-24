@@ -8,7 +8,7 @@ pub mod mod_window {
 
     pub mod input_handler {}
 
-    pub fn window_creation(width: usize, height: usize) {
+    pub fn window_creation(height: usize, width: usize) {
         let mut buffer: Vec<u32> = vec![0; width * height];
 
         let mut window = Window::new(

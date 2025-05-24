@@ -10,10 +10,24 @@ pub mod mod_vulkan_loader {
 
     pub unsafe fn load_vulkan() -> Result<libloading::Library, Box<dyn Error>> {
         unsafe {
-            let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
-                Ok(libloading::Library::new("vulkan-1.dll")?);
+            match cfg!(target_os) {
+                windows => {
+                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
+                        Ok(libloading::Library::new("vulkan-1.dll")?);
 
-            return vulkan_loader;
+                    return vulkan_loader;
+                }
+                linux => {
+                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
+                        Ok(libloading::Library::new("libvulkan.so.1")?);
+                    return vulkan_loader;
+                }
+                macos => {
+                    let vulkan_loader: Result<libloading::Library, Box<dyn Error>> =
+                        Ok(libloading::Library::new("libvulkan.dylib")?);
+                    return vulkan_loader;
+                }
+            }
         }
     }
 

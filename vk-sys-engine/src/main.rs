@@ -19,8 +19,8 @@ use core::ffi::c_char;
 use core::mem::zeroed;
 use core::ptr::{null, null_mut};
 use std::alloc::{Layout, alloc};
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
@@ -34,18 +34,29 @@ use vk_sys::{
 
 const VALIDATION: bool = return_validation();
 
-struct VkSysEngine;
+struct VkSysEngine {
+    window_width: usize,
+    window_height: usize,
+    // Highest Usable Vulkan Version
+    vulkan_version: u32,
+    // Game Engine Version
+    engine_version: u32,
+    // Game Version
+    application_version: u32,
+}
 
 impl VkSysEngine {
     pub fn run(&mut self) {
-        window_creation(800, 600);
+        window_creation(self.window_height, self.window_width);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
 
         let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
         // Spawning new thread for Instance Layer & Extension Counting & Checking
         let vk_info_handle = thread::spawn(move || {
-            println!("Running Instance Extension and Layer Counting and Collecting in Secondary Thread");
+            println!(
+                "Running Instance Extension and Layer Counting and Collecting in Secondary Thread"
+            );
             // Collects Instance Extensions and Extension Count
             let (instance_extensions, instance_extensions_count) =
                 unsafe { Self::return_instance_extensions(&entry_points_copy) };
@@ -54,12 +65,21 @@ impl VkSysEngine {
                 unsafe { Self::return_instance_layers(&entry_points_copy, true) };
             println!("Finished running Secondary Thread");
             // Returns Instance Layers, Extensions, and their Counts.
-            (instance_extensions, instance_extensions_count, instance_layers, instance_layers_count)
+            (
+                instance_extensions,
+                instance_extensions_count,
+                instance_layers,
+                instance_layers_count,
+            )
         });
 
         // Collects info from secondary thread
-        let (instance_extensions, instance_extensions_count, instance_layers, instance_layers_count) = vk_info_handle.join().unwrap();
-
+        let (
+            instance_extensions,
+            instance_extensions_count,
+            instance_layers,
+            instance_layers_count,
+        ) = vk_info_handle.join().unwrap();
 
         let instance_layers_vec: Vec<*const c_char> = instance_layers
             .iter()
@@ -73,6 +93,9 @@ impl VkSysEngine {
         //let instance_pointers: InstancePointers = unsafe { return_instance_pointers(&vulkan_lib) };
         let instance: Instance = Self::create_instance(
             &entry_points,
+            self.application_version,
+            self.engine_version,
+            self.vulkan_version,
             instance_extensions_count,
             instance_extensions_vec,
             instance_layers_count,
@@ -86,6 +109,9 @@ impl VkSysEngine {
 
     fn create_instance(
         entry_pointers: &EntryPoints,
+        application_version: u32,
+        engine_version: u32,
+        vulkan_version: u32,
         extension_count: u32,
         extensions: Vec<*const i8>,
         layer_count: u32,
@@ -98,10 +124,10 @@ impl VkSysEngine {
             sType: STRUCTURE_TYPE_APPLICATION_INFO,
             pNext: null(),
             pApplicationName: application_name_wrapper.as_ptr(),
-            applicationVersion: make_version(0, 1, 0, 0),
+            applicationVersion: application_version,
             pEngineName: engine_name_wrapper.as_ptr(),
-            engineVersion: make_version(0, 1, 0, 0),
-            apiVersion: make_version(1, 3, 296, 0),
+            engineVersion: engine_version,
+            apiVersion: vulkan_version,
         };
 
         let application_info_wrapper: *const ApplicationInfo = &app_info;
@@ -152,7 +178,8 @@ impl VkSysEngine {
                 null_mut(),
             );
 
-            let extensions_vec_layout = Layout::array::<ExtensionProperties>(extension_count as usize).unwrap();
+            let extensions_vec_layout =
+                Layout::array::<ExtensionProperties>(extension_count as usize).unwrap();
 
             let mut extensions_vec: *mut ExtensionProperties =
                 alloc(extensions_vec_layout) as *mut ExtensionProperties;
@@ -168,8 +195,11 @@ impl VkSysEngine {
                 extensions_vec,
             );
 
-            let extensions_return_vec: Vec<ExtensionProperties> = 
-                Vec::from_raw_parts(extensions_vec, extension_count as usize, extension_count as usize);
+            let extensions_return_vec: Vec<ExtensionProperties> = Vec::from_raw_parts(
+                extensions_vec,
+                extension_count as usize,
+                extension_count as usize,
+            );
 
             if extension_count_result == SUCCESS {
                 println!("Extension Counting Successful")
@@ -201,8 +231,8 @@ impl VkSysEngine {
 
             let layer_vec_layout = Layout::array::<LayerProperties>(layer_count as usize).unwrap();
 
-            let mut layers_vec: *mut LayerProperties = 
-                alloc(layer_vec_layout) as * mut LayerProperties;
+            let mut layers_vec: *mut LayerProperties =
+                alloc(layer_vec_layout) as *mut LayerProperties;
 
             if layers_vec.is_null() {
                 panic!("Allocation for Layers failed!");
@@ -214,12 +244,12 @@ impl VkSysEngine {
                 layers_vec,
             );
 
-            let layers_return_vec: Vec<LayerProperties> = 
+            let layers_return_vec: Vec<LayerProperties> =
                 Vec::from_raw_parts(layers_vec, layer_count as usize, layer_count as usize);
 
             if layers_vec_result == SUCCESS {
                 println!("Layer Checking Successful");
-                return (layers_return_vec, layer_count)
+                return (layers_return_vec, layer_count);
             } else {
                 eprintln!("Layer Checking Failed");
             }
@@ -246,7 +276,14 @@ impl VkSysEngine {
 }
 
 fn main() {
-    VkSysEngine.run();
+    let mut game_engine: VkSysEngine = VkSysEngine {
+        window_height: 600,
+        window_width: 800,
+        vulkan_version: make_version(1, 3, 296, 0),
+        engine_version: make_version(0, 1, 0, 0),
+        application_version: make_version(0, 1, 0, 0),
+    };
+    VkSysEngine::run(&mut game_engine);
     println!("Working so far");
 }
 
