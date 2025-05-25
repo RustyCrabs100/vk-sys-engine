@@ -21,7 +21,8 @@ use create_window::mod_window::window_creation;
 mod return_pfns;
 use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointers};
 mod vk_debugger;
-use vk_debugger::mod_vk_debugger::{checking_validation_support, return_validation};
+use vk_debugger::mod_vk_debugger::{checking_validation_support, return_validation,
+     return_allocation_callbacks};
 // Standard Library Imports
 use core::ffi::c_char;
 use core::mem::zeroed;
@@ -37,7 +38,7 @@ use libloading::Library;
 use vk_sys::{
     ApplicationInfo, EntryPoints, ExtensionProperties, Instance, InstanceCreateInfo,
     LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-    SUCCESS,
+    SUCCESS, AllocationCallbacks
 };
 
 const VALIDATION: bool = return_validation();
@@ -60,6 +61,7 @@ impl VkSysEngine {
     pub fn run(&mut self) {
         window_creation(self.window_height, self.window_width);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
+        let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
 
         let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
@@ -114,6 +116,7 @@ impl VkSysEngine {
             self.application_version,
             self.engine_version,
             self.vulkan_version,
+            &allocation_callbacks,
             instance_extensions_count,
             instance_extensions_vec,
             instance_layers_count,
@@ -130,6 +133,7 @@ impl VkSysEngine {
         application_version: u32,
         engine_version: u32,
         vulkan_version: u32,
+        allocation_callbacks: &AllocationCallbacks,
         extension_count: u32,
         extensions: Vec<*const i8>,
         layer_count: u32,
@@ -169,7 +173,7 @@ impl VkSysEngine {
             EntryPoints::CreateInstance(
                 entry_pointers,
                 &instance_create_info,
-                null(),
+                allocation_callbacks as *const AllocationCallbacks,
                 instance_pointer,
             )
         };

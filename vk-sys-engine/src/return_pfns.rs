@@ -46,7 +46,7 @@ pub mod mod_return_pfns {
     
     /// Returns InstancePointers for Debugging, Physical Device Initalization, 
     /// Swapchain Intialization, Image Formatting, Queue's, Surface Creations, etc
-    /* 
+     /*
     pub unsafe fn return_instance_pointers(lib: &Library) -> InstancePointers {
         unsafe {
             return InstancePointers {
@@ -99,21 +99,26 @@ pub mod mod_return_pfns {
                 GetPhysicalDeviceXlibPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceXlibPresentationSupportKHR\0")
                     .map(|s| *s)
-                    .unwrap_or(vk_dummy_pfn_creator!(GetPhysicalDeviceXcbPresentationSupportKHR, (a:))),
+                    .unwrap_or(vk_dummy_pfn_creator!(GetPhysicalDeviceXcbPresentationSupportKHR, (a: vk_sys::PhysicalDevice, b: u32, c: *const AllocationCallbacks, d: *mut vk_sys::SurfaceKHR), Bool32, 0)),
                 CreateXcbSurfaceKHR: *lib
                     .get(b"vkCreateXcbSurfaceKHR\0")
-                    .unwrap_or(vk_dummy_pfn_creator!()),
+                    .map(|s| *s)
+                    .unwrap_or(vk_dummy_pfn_creator!(CreateXcbSurfaceKHR, (a: vk_sys::Instance, b: *const vk_sys::XcbSurfaceCreateInfoKHR, c: *const AllocationCallbacks, d: *mut vk_sys::SurfaceKHR), Result, 0)),
                 GetPhysicalDeviceXcbPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceXcbPresentationSupportKHR\0")
-                    .unwrap_or(vk_dummy_pfn_creator!()),
+                    .map(|s| *s)
+                    .unwrap_or(vk_dummy_pfn_creator!(GetPhysicalDeviceXcbPresentationSupportKHR, (a: vk_sys::PhysicalDevice, b: u32, c: *mut c_void, d: u32), Bool32, 0)),
                 CreateWaylandSurfaceKHR: *lib
                     .get(b"vkCreateWaylandSurfaceKHR\0")
-                    .unwrap_or(vk_dummy_pfn_creator!()),
+                    .map(|s| *s)
+                    .unwrap_or(vk_dummy_pfn_creator!(CreateWaylandSurfaceKHR, (a: vk_sys::Instance, b: *const vk_sys::WaylandSurfaceCreateInfoKHR, c: *const AllocationCallbacks, d: *mut vk_sys::SurfaceKHR), Bool32, 0)),
                 GetPhysicalDeviceWaylandPresentationSupportKHR: *lib
                     .get(b"vkGetPhysicalDeviceWaylandPresentationSupportKHR\0")
-                    .unwrap_or(vk_dummy_pfn_creator!()),
+                    .map(|s| *s)
+                    .unwrap_or(vk_dummy_pfn_creator!(GetPhysicalDeviceWaylandPresentationSupportKHR, (a: vk_sys::PhysicalDevice, b: u32, c: *mut c_void), Bool32, 0)),
                 CreateAndroidSurfaceKHR: *lib
                     .get(b"vkCreateAndroidSurfaceKHR\0")
+                    .map(|s| *s)
                     .unwrap_or(vk_dummy_pfn_creator!()),
                 CreateWin32SurfaceKHR: *lib
                     .get(b"vkCreateWin32SurfaceKHR\0")
