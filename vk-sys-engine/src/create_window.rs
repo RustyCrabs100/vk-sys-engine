@@ -7,7 +7,14 @@ pub mod mod_window {
     use minifb::{Key, Window, WindowOptions};
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavaliable)
-    pub mod input_handler {}
+    pub mod input_handler {
+
+        /// Handles Keyboard Input (Stub Function)
+        pub fn keyboard_input_handler() {}
+        
+        /// Handles Mouse Input (Stub Function)
+        pub fn mouse_input_handler() {}
+    }
 
     /// Creates a Window
     pub fn window_creation(height: usize, width: usize) {
