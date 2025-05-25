@@ -11,7 +11,7 @@ pub mod mod_window {
 
         /// Handles Keyboard Input (Stub Function)
         pub fn keyboard_input_handler() {}
-        
+
         /// Handles Mouse Input (Stub Function)
         pub fn mouse_input_handler() {}
     }
@@ -37,7 +37,7 @@ pub mod mod_window {
 
         // Limit to max ~60 fps update rate
         window.set_target_fps(60);
-        
+
         while window.is_open() && !window.is_key_down(Key::Escape) {
             for i in buffer.iter_mut() {
                 *i = 0

@@ -43,10 +43,10 @@ pub mod mod_return_pfns {
             };
         }
     }
-    
-    /// Returns InstancePointers for Debugging, Physical Device Initalization, 
+
+    /// Returns InstancePointers for Debugging, Physical Device Initalization,
     /// Swapchain Intialization, Image Formatting, Queue's, Surface Creations, etc
-     /*
+    /*
     pub unsafe fn return_instance_pointers(lib: &Library) -> InstancePointers {
         unsafe {
             return InstancePointers {
@@ -217,7 +217,7 @@ pub mod mod_return_pfns {
         }
     }
     */
-    
+
     /// Returns DevicePointers (Currenty a Stub Implementation)
     pub unsafe fn return_device_pointers(lib: &Library) -> DevicePointers {
         todo!()

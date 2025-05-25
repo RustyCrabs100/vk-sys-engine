@@ -1,10 +1,9 @@
 //! Basic Game Engine built in Rust.
-//! 
+//!
 //! Provides a renderer and an editor for building games in Rust.
 //! This Game Engine is currently not ready for any usage, and is still being developed.
-//! 
-//! If you require a Game Engine that currently works, use Bevy. 
-
+//!
+//! If you require a Game Engine that currently works, use Bevy.
 
 // Stopping Rust Compiler from complaning
 #![warn(unsafe_op_in_unsafe_fn)]
@@ -21,8 +20,9 @@ use create_window::mod_window::window_creation;
 mod return_pfns;
 use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointers};
 mod vk_debugger;
-use vk_debugger::mod_vk_debugger::{checking_validation_support, return_validation,
-     return_allocation_callbacks};
+use vk_debugger::mod_vk_debugger::{
+    checking_validation_support, return_allocation_callbacks, return_validation,
+};
 // Standard Library Imports
 use core::ffi::c_char;
 use core::mem::zeroed;
@@ -36,9 +36,9 @@ use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    ApplicationInfo, EntryPoints, ExtensionProperties, Instance, InstanceCreateInfo,
-    LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-    SUCCESS, AllocationCallbacks
+    AllocationCallbacks, ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
+    InstanceCreateInfo, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
+    STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
 };
 
 const VALIDATION: bool = return_validation();
@@ -67,32 +67,23 @@ impl VkSysEngine {
         let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
         // Spawning new thread for Instance Layer & Extension Counting & Checking
         let vk_info_handle = thread::spawn(move || {
-            println!(
-                "Running Instance Extension and Layer Counting and Collecting in Secondary Thread"
-            );
+            println!("Running Instance Extension Counting and Collecting in Secondary Thread");
             // Collects Instance Extensions and Extension Count
             let (instance_extensions, instance_extensions_count) =
                 unsafe { Self::return_instance_extensions(&entry_points_copy) };
-            // Collects Instance Layers and Layer Count
-            let (instance_layers, instance_layers_count) =
-                unsafe { Self::return_instance_layers(&entry_points_copy, true) };
+
             println!("Finished running Secondary Thread");
-            // Returns Instance Layers, Extensions, and their Counts.
-            (
-                instance_extensions,
-                instance_extensions_count,
-                instance_layers,
-                instance_layers_count,
-            )
+            // Returns Instance Extensions and the Counts.
+            (instance_extensions, instance_extensions_count)
         });
 
+        // Collects Instance Layers and Layer Count
+        let (mut instance_layers, instance_layers_count) =
+            unsafe { Self::return_instance_layers(&entry_points, true) };
+
         // Collects info from secondary thread
-        let (
-            mut instance_extensions,
-            instance_extensions_count,
-            mut instance_layers,
-            instance_layers_count,
-        ) = vk_info_handle.join().unwrap();
+        let (mut instance_extensions, instance_extensions_count) =
+            vk_info_handle.join().unwrap();
 
         if !checking_validation_support(&instance_layers) {
             instance_layers
@@ -204,7 +195,7 @@ impl VkSysEngine {
             let extensions_vec_layout =
                 Layout::array::<ExtensionProperties>(extension_count as usize).unwrap();
 
-            let mut extensions_vec: *mut ExtensionProperties =
+            let extensions_vec: *mut ExtensionProperties =
                 alloc(extensions_vec_layout) as *mut ExtensionProperties;
 
             if extensions_vec.is_null() {
@@ -256,7 +247,7 @@ impl VkSysEngine {
             // Manually allocates memory for Layers
             let layer_vec_layout = Layout::array::<LayerProperties>(layer_count as usize).unwrap();
 
-            let mut layers_vec: *mut LayerProperties =
+            let layers_vec: *mut LayerProperties =
                 alloc(layer_vec_layout) as *mut LayerProperties;
 
             if layers_vec.is_null() {
@@ -301,6 +292,40 @@ impl VkSysEngine {
         }
     }
 
+    fn return_filtered_layers<'a>(
+        layers: &'a mut Vec<LayerProperties>,
+        unwanted_layers: &[String],
+    ) -> (&'a [LayerProperties], u32) {
+        layers.retain(|layer| {
+            !unwanted_layers
+                .iter()
+                .any(|unwanted| layer.layerName == static_c_char_array!(b"{unwanted}\0"))
+        });
+
+        let mut layer_count = 0;
+        for i in &mut *layers {
+            layer_count += 1;
+        }
+        return (layers.as_slice(), layer_count);
+    }
+
+    fn return_filtered_extensions<'a>(
+        extensions: &'a mut Vec<ExtensionProperties>,
+        unwanted_extensions: &[String],
+    ) -> (&'a [ExtensionProperties], u32) {
+        extensions.retain(|extension| {
+            !unwanted_extensions
+                .iter()
+                .any(|unwanted| extension.extensionName == static_c_char_array!(b"{unwanted}\0"))
+        });
+
+        let mut extension_count = 0;
+        for i in &mut *extensions {
+            extension_count += 1;
+        }
+        return (extensions.as_slice(), extension_count);
+    }
+
     fn main_loop() {}
 
     // Cleans up data Rust can't
@@ -343,8 +368,7 @@ mod tests {
 
     #[test]
     fn macro_dummy_test_full() {
-        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = 
-            vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
+        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
     }
 
     #[test]

@@ -13,10 +13,10 @@ pub mod mod_vk_debugger {
     use std::alloc::{Layout, alloc, dealloc};
     use std::cmp;
     use vk_sys::{
-        DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
-        DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessageSeverityFlagBitsEXT,
-        DebugUtilsMessengerCallbackDataEXT, LayerProperties, SystemAllocationScope,
-        FALSE, InternalAllocationType, AllocationCallbacks
+        AllocationCallbacks, DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT,
+        DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
+        DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT, FALSE,
+        InternalAllocationType, LayerProperties, SystemAllocationScope,
     };
 
     /// Returns Validation Support (For times when you can't immidiately check Layers)
@@ -40,7 +40,6 @@ pub mod mod_vk_debugger {
         false
     }
 
-
     /// Provides a Debug Callback for Vulkan
     pub extern "system" fn vk_debug_callback(
         error_severity: DebugUtilsMessageSeverityFlagBitsEXT,
@@ -48,7 +47,6 @@ pub mod mod_vk_debugger {
         error_info: *const DebugUtilsMessengerCallbackDataEXT,
         _user_data: *mut c_void,
     ) -> u32 {
-
         // Exits out if error_severity is for verbose callbacks
         if error_severity == DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT {
             return 3_294_956_295u32;
@@ -62,18 +60,15 @@ pub mod mod_vk_debugger {
         // else, Prints out the error
         println!(
             "Error: {0:?}, Type: {error_type:?}, Severity: {error_severity:?}. ",
-            unsafe{(*error_info).pMessage}
+            unsafe { (*error_info).pMessage }
         );
 
         // Returns VK_FALSE after ending.
         FALSE
     }
 
-
     /// Stub Implementation
-    pub fn return_debug_messenger() {
-
-    }
+    pub fn return_debug_messenger() {}
 
     /// Returns AllocationCallbacks.
     pub fn return_allocation_callbacks() -> AllocationCallbacks {
@@ -86,14 +81,14 @@ pub mod mod_vk_debugger {
             pfnInternalFree: internal_free_notify,
         };
     }
-    
-    /// This is for FFI & Rust Safe Deallocation 
+
+    /// This is for FFI & Rust Safe Deallocation
     /// (As Vulkan does not allow you to provide size and alignment
     ///  to their free function pointer as an input.)
     #[repr(C)]
     struct AllocationInfo {
         size: usize,
-        alignment: usize
+        alignment: usize,
     }
 
     /// Provides AllocationCallbacks' Allocation Field
@@ -104,9 +99,12 @@ pub mod mod_vk_debugger {
         _scope: SystemAllocationScope,
     ) -> *mut c_void {
         // Adds checking for valid memory allocation
-        if size == 0 || alignment == 0 || !alignment.is_power_of_two() || size > MAX_REASONABLE_SIZE {
-            eprintln!("Vulkan attempted an Allocation of size {} and alignment of size {}, which is invalid", 
-                size, alignment);
+        if size == 0 || alignment == 0 || !alignment.is_power_of_two() || size > MAX_REASONABLE_SIZE
+        {
+            eprintln!(
+                "Vulkan attempted an Allocation of size {} and alignment of size {}, which is invalid",
+                size, alignment
+            );
             return null_mut();
         }
 
@@ -119,17 +117,17 @@ pub mod mod_vk_debugger {
             .expect("Failed to Layout Memory for custom Allocation");
         // Initalizes Metadata
         let (layout, offset) = header_layout.extend(mem_layout).unwrap();
-        
+
         unsafe {
             // Allocates memory
-            let mut mem = alloc(layout);
+            let mem = alloc(layout);
             // Panics if no memory was allocated
             if mem.is_null() {
                 panic!("Allocation Function Attempted to Allocate 0 Bytes of Memory");
             }
 
             // Initalizes Metadata as a pointer
-            let mut header_mem = mem as *mut AllocationInfo;
+            let header_mem = mem as *mut AllocationInfo;
 
             // Adds metadata to pointer.
             (*header_mem).size = size;
@@ -140,7 +138,7 @@ pub mod mod_vk_debugger {
 
             // returns mem
             valid_return_mem
-        }    
+        }
     }
 
     /// Provides AllocationCallbacks' Reallocation Field
@@ -152,9 +150,12 @@ pub mod mod_vk_debugger {
         _scope: SystemAllocationScope,
     ) -> *mut c_void {
         // Adds checking for valid memory reallocation
-        if size == 0 || alignment == 0 || !alignment.is_power_of_two() || size > MAX_REASONABLE_SIZE {
-            eprintln!("Vulkan attempted an Allocation of size {} and alignment of size {}, which is invalid", 
-                size, alignment);
+        if size == 0 || alignment == 0 || !alignment.is_power_of_two() || size > MAX_REASONABLE_SIZE
+        {
+            eprintln!(
+                "Vulkan attempted an Allocation of size {} and alignment of size {}, which is invalid",
+                size, alignment
+            );
             return null_mut();
         }
 
@@ -172,11 +173,11 @@ pub mod mod_vk_debugger {
         let offset = metadata_layout.size();
 
         // Gets the old AllocationInfo
-        let old_alloc_info = unsafe{ (p_original as *mut u8).sub(offset) as *mut AllocationInfo};
+        let old_alloc_info = unsafe { (p_original as *mut u8).sub(offset) as *mut AllocationInfo };
 
         // Gets the old Allocation Size
-        let old_alloc_size = unsafe {(*old_alloc_info).size};
-        
+        let old_alloc_size = unsafe { (*old_alloc_info).size };
+
         // Recreate Memory
         let new_mem = allocation_fn(_p_user_data, size, alignment, _scope);
 
@@ -189,11 +190,7 @@ pub mod mod_vk_debugger {
         let min_mem_size = cmp::min(size, old_alloc_size);
 
         unsafe {
-            copy_nonoverlapping(
-                p_original as *const u8,
-                new_mem as *mut u8,
-                min_mem_size,
-            );
+            copy_nonoverlapping(p_original as *const u8, new_mem as *mut u8, min_mem_size);
             free_fn(_p_user_data, p_original);
         }
 
@@ -202,42 +199,49 @@ pub mod mod_vk_debugger {
 
     // Still waiting for Implementations for Free calls, and for Internal Notifications
     /// Provides AllocationCallbacks' Free Field
-    extern "system" fn free_fn (
-        _p_user_data: *mut c_void,
-        p_memory: *mut c_void
-    ) {
+    extern "system" fn free_fn(_p_user_data: *mut c_void, p_memory: *mut c_void) {
         println!("Freeing {:?} memory", p_memory);
         if p_memory.is_null() {
             eprintln!("Vulkan attempted to free 0 bytes of memory");
             return;
-        } 
+        }
 
         // Creates new Layout for Metadata
-        let mut alloc_layout_uninit = Layout::new::<AllocationInfo>();
+        let alloc_layout_uninit = Layout::new::<AllocationInfo>();
 
         // Creates the memory offset
         let offset = alloc_layout_uninit.size();
 
         unsafe {
             // Get memory metadata
-            let alloc_ptr: *mut AllocationInfo = (p_memory as *mut u8).sub(alloc_layout_uninit.size()) as *mut AllocationInfo;
-        
+            let alloc_ptr: *mut AllocationInfo =
+                (p_memory as *mut u8).sub(alloc_layout_uninit.size()) as *mut AllocationInfo;
+
             // Gets memory size
             let alloc_size: usize = (*alloc_ptr).size;
 
-            
             // Gets memory alignment
             let alloc_alignment: usize = (*alloc_ptr).alignment;
-            
+
             // Prevents further crashing, as user_supplied AllocationCallbacks
             // Functions will allocate with a size & alignment of 0. This causes crashes down the line
-            if alloc_size == 0 || alloc_alignment == 0 || !alloc_alignment.is_power_of_two() || alloc_size > MAX_REASONABLE_SIZE {
-                eprintln!("Vulkan attempted to free memory of size {} and alignment of size {}, which is invalid", 
-                    alloc_size, alloc_alignment);
+            if alloc_size == 0
+                || alloc_alignment == 0
+                || !alloc_alignment.is_power_of_two()
+                || alloc_size > MAX_REASONABLE_SIZE
+            {
+                eprintln!(
+                    "Vulkan attempted to free memory of size {} and alignment of size {}, which is invalid",
+                    alloc_size, alloc_alignment
+                );
                 return;
             }
-            // Gets proper memory 
-            let alloc_layout = Layout::from_size_align(alloc_size, alloc_alignment).expect(&format!("Invalid layout: size = {}, alignment = {}", alloc_size, alloc_alignment));
+            // Gets proper memory
+            let alloc_layout =
+                Layout::from_size_align(alloc_size, alloc_alignment).expect(&format!(
+                    "Invalid layout: size = {}, alignment = {}",
+                    alloc_size, alloc_alignment
+                ));
 
             let (layout, _offset) = alloc_layout_uninit.extend(alloc_layout).unwrap();
 
@@ -251,8 +255,10 @@ pub mod mod_vk_debugger {
         _internal_alloc_type: InternalAllocationType,
         system_alloc_scope: SystemAllocationScope,
     ) -> *mut c_void {
-        println!("Internal Allocation Notification: {} bytes are being allocated in {:?}", 
-            mem_size, system_alloc_scope);
+        println!(
+            "Internal Allocation Notification: {} bytes are being allocated in {:?}",
+            mem_size, system_alloc_scope
+        );
         null_mut()
     }
 
@@ -262,8 +268,10 @@ pub mod mod_vk_debugger {
         _internal_alloc_type: InternalAllocationType,
         system_alloc_scope: SystemAllocationScope,
     ) -> *mut c_void {
-        println!("Internal Memory Free Notification: {} bytes are being freed in {:?}",
-            mem_size, system_alloc_scope);
-        null_mut()    
+        println!(
+            "Internal Memory Free Notification: {} bytes are being freed in {:?}",
+            mem_size, system_alloc_scope
+        );
+        null_mut()
     }
 }
