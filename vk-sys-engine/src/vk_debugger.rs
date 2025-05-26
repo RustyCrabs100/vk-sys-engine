@@ -9,14 +9,17 @@ pub mod mod_vk_debugger {
 
     use crate::static_c_char_array;
     use core::ffi::{c_char, c_void};
-    use core::ptr::{copy_nonoverlapping, null_mut};
+    use core::ptr::{copy_nonoverlapping, null_mut, null};
     use std::alloc::{Layout, alloc, dealloc};
     use std::cmp;
     use vk_sys::{
         AllocationCallbacks, DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT,
         DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
         DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT, FALSE,
-        InternalAllocationType, LayerProperties, SystemAllocationScope,
+        InternalAllocationType, LayerProperties, SystemAllocationScope, DebugUtilsMessengerEXT,
+        DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+        STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT, DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+        DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT, DebugUtilsMessengerCreateInfoEXT
     };
 
     /// Returns Validation Support (For times when you can't immidiately check Layers)
@@ -41,7 +44,7 @@ pub mod mod_vk_debugger {
     }
 
     /// Provides a Debug Callback for Vulkan
-    pub extern "system" fn vk_debug_callback(
+    extern "system" fn vk_debug_callback(
         error_severity: DebugUtilsMessageSeverityFlagBitsEXT,
         error_type: DebugUtilsMessageTypeFlagsEXT,
         error_info: *const DebugUtilsMessengerCallbackDataEXT,
@@ -66,6 +69,23 @@ pub mod mod_vk_debugger {
         // Returns VK_FALSE after ending.
         FALSE
     }
+
+    /// Returns the Debug Messenger Info
+    pub extern "system" fn vk_debug_messenger_init() -> DebugUtilsMessengerCreateInfoEXT {
+        DebugUtilsMessengerCreateInfoEXT {
+            sType: STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            pNext: null(),
+            flags: 0,
+            // Only warn if the callback is a warning or an error
+            messageSeverity: DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            // Only warn if the callback is for Validation or to Inform of a more optimized method
+            messageType: DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            // Informs vulkan of the callback function
+            pfnUserCallback: vk_debug_callback,
+            pUserData: null_mut(),
+        }
+    }
+
 
     /// Stub Implementation
     pub fn return_debug_messenger() {}
@@ -197,7 +217,6 @@ pub mod mod_vk_debugger {
         new_mem
     }
 
-    // Still waiting for Implementations for Free calls, and for Internal Notifications
     /// Provides AllocationCallbacks' Free Field
     extern "system" fn free_fn(_p_user_data: *mut c_void, p_memory: *mut c_void) {
         println!("Freeing {:?} memory", p_memory);
@@ -248,7 +267,7 @@ pub mod mod_vk_debugger {
             dealloc(alloc_ptr as *mut u8, layout);
         }
     }
-
+    /// Notifies us if vulkan allocates memory behind the scenes
     extern "system" fn internal_alloc_notify(
         _p_user_data: *mut c_void,
         mem_size: usize,
@@ -261,7 +280,7 @@ pub mod mod_vk_debugger {
         );
         null_mut()
     }
-
+    /// Notifies us if vulkan allocates memory behind the scenes
     extern "system" fn internal_free_notify(
         _p_user_data: *mut c_void,
         mem_size: usize,
