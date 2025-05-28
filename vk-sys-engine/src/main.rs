@@ -5,7 +5,22 @@
 //!
 //! If you require a Game Engine that currently works, use Bevy.
 
-// On your next commit, make sure to replace Library::get() with vkGetInstanceProcAddr and vkGetDeviceProcAddr, as those are for properly getting vulkan function pointers. Library::get() should only be used to load in vulkan and to load in vkGetInstanceProcAddr
+// On your next commit, make sure to replace 
+// Library::get() with vkGetInstanceProcAddr 
+// and vkGetDeviceProcAddr, as those are for 
+// properly getting vulkan function pointers. 
+// Library::get() should only be used to load 
+// in vulkan and to load in 
+// vkGetInstanceProcAddr
+// How to do this: 
+// For core Vulkan features:
+// Use Library::get() from libloading
+// For Instance/Device Function Pointers:
+// Use Library::get() to get:
+// vkGetInstanceProcAddr, and
+// vkGetDeviceProcAddr.
+// Then, use the proper function to call the 
+// Instance or Device Function Pointer
 
 // Stopping Rust Compiler from complaning
 #![warn(unsafe_op_in_unsafe_fn)]
