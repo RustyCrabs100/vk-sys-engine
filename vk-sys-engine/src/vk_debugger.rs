@@ -9,17 +9,18 @@ pub mod mod_vk_debugger {
 
     use crate::static_c_char_array;
     use core::ffi::{c_char, c_void};
-    use core::ptr::{copy_nonoverlapping, null_mut, null};
+    use core::ptr::{copy_nonoverlapping, null, null_mut};
     use std::alloc::{Layout, alloc, dealloc};
     use std::cmp;
     use vk_sys::{
-        AllocationCallbacks, DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT,
-        DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
-        DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT, FALSE,
-        InternalAllocationType, LayerProperties, SystemAllocationScope, DebugUtilsMessengerEXT,
-        DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
-        STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT, DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-        DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT, DebugUtilsMessengerCreateInfoEXT
+        AllocationCallbacks, DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+        DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+        DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+        DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
+        DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT,
+        DebugUtilsMessengerCreateInfoEXT, DebugUtilsMessengerEXT, FALSE, InternalAllocationType,
+        LayerProperties, STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        SystemAllocationScope,
     };
 
     /// Returns Validation Support (For times when you can't immidiately check Layers)
@@ -77,15 +78,16 @@ pub mod mod_vk_debugger {
             pNext: null(),
             flags: 0,
             // Only warn if the callback is a warning or an error
-            messageSeverity: DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            messageSeverity: DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+                | DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
             // Only warn if the callback is for Validation or to Inform of a more optimized method
-            messageType: DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            messageType: DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+                | DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
             // Informs vulkan of the callback function
             pfnUserCallback: vk_debug_callback,
             pUserData: null_mut(),
         }
     }
-
 
     /// Stub Implementation
     pub fn return_debug_messenger() {}

@@ -84,8 +84,7 @@ impl VkSysEngine {
             unsafe { Self::return_instance_layers(&entry_points, true) };
 
         // Collects info from secondary thread
-        let (mut instance_extensions, instance_extensions_count) =
-            vk_info_handle.join().unwrap();
+        let (mut instance_extensions, instance_extensions_count) = vk_info_handle.join().unwrap();
 
         if !checking_validation_support(&instance_layers) {
             instance_layers
@@ -249,8 +248,7 @@ impl VkSysEngine {
             // Manually allocates memory for Layers
             let layer_vec_layout = Layout::array::<LayerProperties>(layer_count as usize).unwrap();
 
-            let layers_vec: *mut LayerProperties =
-                alloc(layer_vec_layout) as *mut LayerProperties;
+            let layers_vec: *mut LayerProperties = alloc(layer_vec_layout) as *mut LayerProperties;
 
             if layers_vec.is_null() {
                 panic!("Allocation for Layers failed!");
@@ -342,6 +340,18 @@ impl VkSysEngine {
     }
 }
 
+impl Default for VkSysEngine {
+    fn default() -> VkSysEngine {
+        VkSysEngine {
+            window_height: 600,
+            window_width: 800,
+            vulkan_version: make_version(1, 0, 0, 0),
+            engine_version: make_version(0, 1, 0, 0),
+            application_version: make_version(0, 1, 0, 0)
+        }
+    }    
+}
+
 fn main() {
     let mut game_engine: VkSysEngine = VkSysEngine {
         window_height: 600,
@@ -357,7 +367,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // use crate::vulkan_loader::mod_vulkan_loader::return_get_instance_proc_addr_pfn;
     use core::ffi::c_void;
+    use core::ptr::null;
 
     #[test]
     fn validation_test() {
@@ -367,7 +379,7 @@ mod tests {
             assert_eq!(VALIDATION, false);
         }
     }
-
+    /* Other Macro currently commented out
     #[test]
     fn macro_dummy_test_full() {
         let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
@@ -378,4 +390,5 @@ mod tests {
         let dummy_fn: extern "system" fn(*mut c_void, *const c_void) =
             vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void));
     }
+    */
 }

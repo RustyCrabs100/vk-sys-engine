@@ -4,7 +4,6 @@
 #![warn(unused_variables)]
 
 pub mod mod_utils {
-    
 
     /// Returns a readable version in u32.
     pub fn make_version(major: u8, minor: u8, patch: u16, build: u8) -> u32 {
