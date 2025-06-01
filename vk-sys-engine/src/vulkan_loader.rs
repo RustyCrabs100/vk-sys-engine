@@ -5,7 +5,7 @@
 #![warn(unused_variables)]
 
 pub mod mod_vulkan_loader {
-    use core::ffi::{c_char, c_void, CStr};
+    use core::ffi::{CStr, c_char, c_void};
     use libloading;
     use libloading::{Library, Symbol};
     use std::boxed::Box;
@@ -27,7 +27,7 @@ pub mod mod_vulkan_loader {
     /// Returns a usable function to load in Vulkan Function Pointers
     pub unsafe fn return_instance_function_loader(
         lib: &Library,
-        instance: Option<&vk_sys::Instance>
+        instance: Option<&vk_sys::Instance>,
     ) -> impl FnMut(&CStr) -> *const c_void {
         // Loads in vkGetInstanceProcAddr
         let get_instance_proc_addr: extern "system" fn(

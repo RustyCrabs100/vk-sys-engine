@@ -5,21 +5,21 @@
 //!
 //! If you require a Game Engine that currently works, use Bevy.
 
-// On your next commit, make sure to replace 
-// Library::get() with vkGetInstanceProcAddr 
-// and vkGetDeviceProcAddr, as those are for 
-// properly getting vulkan function pointers. 
-// Library::get() should only be used to load 
-// in vulkan and to load in 
+// On your next commit, make sure to replace
+// Library::get() with vkGetInstanceProcAddr
+// and vkGetDeviceProcAddr, as those are for
+// properly getting vulkan function pointers.
+// Library::get() should only be used to load
+// in vulkan and to load in
 // vkGetInstanceProcAddr
-// How to do this: 
+// How to do this:
 // For core Vulkan features:
 // Use Library::get() from libloading
 // For Instance/Device Function Pointers:
 // Use Library::get() to get:
 // vkGetInstanceProcAddr, and
 // vkGetDeviceProcAddr.
-// Then, use the proper function to call the 
+// Then, use the proper function to call the
 // Instance or Device Function Pointer
 
 // Stopping Rust Compiler from complaning
@@ -35,13 +35,15 @@ use utils::mod_utils::make_version;
 mod create_window;
 use create_window::mod_window::window_creation;
 mod return_pfns;
-use return_pfns::mod_return_pfns::return_entry_points; // return_instance_pointers};
+use return_pfns::mod_return_pfns::{return_entry_points, return_instance_pointers}; // return_instance_pointers};
 mod vk_debugger;
 use vk_debugger::mod_vk_debugger::{
-    checking_validation_support, return_allocation_callbacks, return_validation,
+    checking_validation_support, destroy_debug_messenger, return_allocation_callbacks,
+    return_debug_messenger, return_validation, vk_debug_callback, vk_debug_messenger_init,
+
 };
 // Standard Library Imports
-use core::ffi::c_char;
+use core::ffi::{c_char, c_void};
 use core::mem::zeroed;
 use core::ptr::{null, null_mut};
 use std::alloc::{Layout, alloc};
@@ -53,10 +55,14 @@ use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    AllocationCallbacks, ApplicationInfo, EntryPoints, ExtensionProperties, Instance,
-    InstanceCreateInfo, LayerProperties, Result, STRUCTURE_TYPE_APPLICATION_INFO,
-    STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
+    AllocationCallbacks, ApplicationInfo, DebugUtilsMessengerCreateInfoEXT, EntryPoints,
+    ExtensionProperties, Instance, InstanceCreateInfo, InstancePointers, LayerProperties, Result,
+    STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS, NULL_HANDLE,
+    PhysicalDevice, PhysicalDeviceProperties, PhysicalDeviceFeatures, 
 };
+
+// Minimal Debugging Library Imports (mini_log Imports)
+use mini_log::{Logger, LoggingType};
 
 const VALIDATION: bool = return_validation();
 /// The VkSysEngine Struct allows you to manually define certain aspects of the game.
@@ -75,6 +81,7 @@ struct VkSysEngine {
 
 impl VkSysEngine {
     /// Begins to run the game engine
+    /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
         window_creation(self.window_height, self.window_width);
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
@@ -101,9 +108,8 @@ impl VkSysEngine {
         // Collects info from secondary thread
         let (mut instance_extensions, instance_extensions_count) = vk_info_handle.join().unwrap();
 
-        if !checking_validation_support(&instance_layers) {
-            instance_layers
-                .retain(|f| f.layerName != static_c_char_array!(b"VK_LUNARG_KHRONOS_validation\0"));
+        if !checking_validation_support(&instance_layers) && !VALIDATION {
+            println!("Validation not Supported");
             instance_extensions
                 .retain(|f| f.extensionName != static_c_char_array!(b"VK_EXT_debug_utils\0"));
         }
@@ -129,9 +135,30 @@ impl VkSysEngine {
             instance_layers_count,
             instance_layers_vec,
         );
+        let instance_pointers: InstancePointers =
+            unsafe { return_instance_pointers(&vulkan_lib, Some(&instance)) };
+        let debug_messenger_uninit: u64 = NULL_HANDLE;    
+        let debug_messenger = return_debug_messenger(
+            &instance_pointers,
+            &instance,
+            &vk_debug_messenger_init() as *const DebugUtilsMessengerCreateInfoEXT,
+            &allocation_callbacks as *const AllocationCallbacks,
+            &debug_messenger_uninit as *const vk_sys::DebugUtilsMessengerEXT,
+            VALIDATION,
+        );
+
+        if debug_messenger == SUCCESS {
+            println!("Debug Messenger Setup Complete");
+        }
         Self::main_loop();
         unsafe {
-            Self::cleanup(vulkan_lib); //instance_pointers, null(), instance);
+            Self::cleanup(
+                vulkan_lib,
+                &instance_pointers,
+                &allocation_callbacks,
+                instance,
+                debug_messenger.into(),
+            );
         }
     }
     /// Creates Vulkan Instance
@@ -148,6 +175,7 @@ impl VkSysEngine {
     ) -> Instance {
         let application_name_wrapper: [c_char; 256] = static_c_char_array!(b"Rust Game Engine\0");
         let engine_name_wrapper: [c_char; 256] = static_c_char_array!(b"Rustic\0");
+
         // Sets application info
         let app_info: ApplicationInfo = ApplicationInfo {
             sType: STRUCTURE_TYPE_APPLICATION_INFO,
@@ -161,7 +189,7 @@ impl VkSysEngine {
         // wraps ApplicationInfo in a type that InstanceCreateInfo can read
         let application_info_wrapper: *const ApplicationInfo = &app_info;
         // creates Instance Info
-        let instance_create_info: InstanceCreateInfo = InstanceCreateInfo {
+        let mut instance_create_info: InstanceCreateInfo = InstanceCreateInfo {
             sType: STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             pNext: null(),
             flags: 0,
@@ -171,6 +199,12 @@ impl VkSysEngine {
             enabledExtensionCount: extension_count,
             ppEnabledExtensionNames: extensions.as_ptr(),
         };
+        
+        let debug_create_info: DebugUtilsMessengerCreateInfoEXT = vk_debug_messenger_init();
+        if VALIDATION {
+            instance_create_info.pNext =
+                &debug_create_info as *const DebugUtilsMessengerCreateInfoEXT as *const c_void;
+        }
         // Initalizes an empty handle to the Vulkan Instance
         let mut instance: Instance = unsafe { zeroed() };
         // wraps Instance in a type that CreateInstance can use.
@@ -193,6 +227,77 @@ impl VkSysEngine {
 
         instance
     }
+    /// Picks the Physical Device
+    fn pick_physical_device(
+        &self, 
+        instance_ptrs: &InstancePointers,
+        instance: &Instance,
+    ) {
+        let mut physical_device: PhysicalDevice = NULL_HANDLE.try_into().unwrap();
+
+        let mut device_count: u32 = 0;
+        unsafe{InstancePointers::EnumeratePhysicalDevices(
+            instance_ptrs,
+            *instance,
+            &mut device_count,
+            null_mut(),
+        )};
+
+        if device_count == 0 {
+            panic!("[UNRECOVERABLE]: [ERROR]: Failed to find GPUs with Vulkan Support!");
+        }
+
+        let mut devices: Vec<PhysicalDevice> = Vec::new();
+
+        let mut p_devices: *mut PhysicalDevice = devices.as_mut_ptr();
+        unsafe {InstancePointers::EnumeratePhysicalDevices(
+            instance_ptrs,
+            *instance,
+            &mut device_count,
+            p_devices,
+        )};
+
+        for device in devices {
+            if Self::is_device_suitable(&*instance_ptrs, device) {
+                physical_device = device;
+                break;
+            }
+        }
+
+        if physical_device == NULL_HANDLE.try_into().unwrap() {
+            panic!("[ERROR]: Failed to find a suitable GPU!");
+        }
+    }
+
+    /// Checks if the Physial Device can be used.
+    fn is_device_suitable(
+        instance_ptrs: &InstancePointers,
+        device: PhysicalDevice
+    ) -> bool {
+        let mut device_properties: PhysicalDeviceProperties = unsafe{zeroed()};
+        unsafe{InstancePointers::GetPhysicalDeviceProperties(
+            instance_ptrs,
+            device,
+            &mut device_properties,
+        )};
+
+        let mut device_features: PhysicalDeviceFeatures = unsafe{zeroed()};
+        unsafe{InstancePointers::GetPhysicalDeviceFeatures(
+            instance_ptrs,
+            device, 
+            &mut device_features,
+        )};
+
+        return device_properties.deviceType == vk_sys::PHYSICAL_DEVICE_TYPE_DISCRETE_GPU 
+            | vk_sys::PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    }
+
+    /// Feature Planned to be made later
+    fn rate_device_suitability(device: PhysicalDevice) {
+        todo!()
+    }
+    /// Creates the Vulkan Device
+    fn create_device() {todo!()}
     /// Returns Vulkan Instance Extensions
     unsafe fn return_instance_extensions(
         entry_pointers: &EntryPoints,
@@ -346,11 +451,16 @@ impl VkSysEngine {
     // Cleans up data Rust can't
     unsafe fn cleanup(
         lib: Library,
-        //instance_pointers: InstancePointers,
-        //allocation_callbacks: *const AllocationCallbacks,
-        //instance: Instance,
+        instance_pointers: &InstancePointers,
+        allocation_callbacks: &AllocationCallbacks,
+        instance: Instance,
+        debug_messenger: vk_sys::DebugUtilsMessengerEXT,
     ) {
-        // InstancePointers::DestroyInstance(&instance_pointers, instance, allocation_callbacks);
+        let allocation = allocation_callbacks as *const AllocationCallbacks;
+        if VALIDATION {
+            destroy_debug_messenger(instance_pointers, &instance, debug_messenger, allocation, VALIDATION);
+        }
+        InstancePointers::DestroyInstance(instance_pointers, instance, allocation);
         let _ = close_vulkan(lib);
     }
 }
@@ -362,9 +472,9 @@ impl Default for VkSysEngine {
             window_width: 800,
             vulkan_version: make_version(1, 0, 0, 0),
             engine_version: make_version(0, 1, 0, 0),
-            application_version: make_version(0, 1, 0, 0)
+            application_version: make_version(0, 1, 0, 0),
         }
-    }    
+    }
 }
 
 fn main() {
@@ -394,16 +504,9 @@ mod tests {
             assert_eq!(VALIDATION, false);
         }
     }
-    /* Other Macro currently commented out
-    #[test]
-    fn macro_dummy_test_full() {
-        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) -> *mut c_void = vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void), *mut c_void, null_mut());
-    }
-
-    #[test]
-    fn macro_dummy_test_nret() {
-        let dummy_fn: extern "system" fn(*mut c_void, *const c_void) =
-            vk_dummy_pfn_creator!(fn_utils, (a: *mut c_void, b: *const c_void));
-    }
-    */
 }
+
+// https://github.com/nagisa/rust_libloading/ - libloading Github
+// https://github.com/emoon/rust_minifb - minifb Github
+// The vk-sys github is not directly linkable, but we could use the vulkano github (since vulkano-rs is the dev)
+// https://github.com/vulkano-rs/vulkano

@@ -1,9 +1,37 @@
 [package]
 name = "vk-sys-engine"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+authors = ["RustyCrabs100 rusty.crabs100@gmail.com"]
+description = "A Game Engine writen in Rust using vk-sys"
+license = "MIT"
+repository = "https://github.com/RustyCrabs100/vk-sys-engine"
+readme = "README.md"
+keywords = ["3d", "engine", "game", "graphics"]
+categories = ["Game development", "Game engines", "Rendering"]
 
 [dependencies]
 libloading = "0.8.7"
+mini_log = "0.1.0"
 minifb = "0.28.0"
 vk-sys = "0.7.0"
+
+[profile.dev]
+opt-level = 0
+debug-assertions = true
+overflow-checks = true
+debug = 2
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+panic = 'abort'
+incremental = false
+codegen-units = 12

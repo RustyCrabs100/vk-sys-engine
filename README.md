@@ -33,6 +33,7 @@ These are **REQUIRED ONLY** if your going to ***COMPILE*** the project.
  2. vk-sys: this is an **EXTREMELY** light wrapper around vulkan. 
  3. libloading: this is used to dynamically load in vulkan and it's function pointers. 
  4. minifb: this is used to create the window. 
+ 5. mini_log: this is used to log the program
 
  These are **REQUIRED NO MATTER WHAT** 
   * Vulkan Drivers for your GPU  

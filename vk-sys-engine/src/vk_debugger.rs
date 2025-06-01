@@ -18,9 +18,9 @@ pub mod mod_vk_debugger {
         DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
         DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
         DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT,
-        DebugUtilsMessengerCreateInfoEXT, DebugUtilsMessengerEXT, FALSE, InternalAllocationType,
-        LayerProperties, STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        SystemAllocationScope,
+        DebugUtilsMessengerCreateInfoEXT, DebugUtilsMessengerEXT, FALSE, InstancePointers,
+        InternalAllocationType, LayerProperties, SUCCESS,
+        STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT, SystemAllocationScope,
     };
 
     /// Returns Validation Support (For times when you can't immidiately check Layers)
@@ -45,12 +45,12 @@ pub mod mod_vk_debugger {
     }
 
     /// Provides a Debug Callback for Vulkan
-    extern "system" fn vk_debug_callback(
+    pub extern "system" fn vk_debug_callback(
         error_severity: DebugUtilsMessageSeverityFlagBitsEXT,
         error_type: DebugUtilsMessageTypeFlagsEXT,
         error_info: *const DebugUtilsMessengerCallbackDataEXT,
         _user_data: *mut c_void,
-    ) -> u32 {
+    ) -> vk_sys::Bool32 {
         // Exits out if error_severity is for verbose callbacks
         if error_severity == DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT {
             return 3_294_956_295u32;
@@ -63,7 +63,7 @@ pub mod mod_vk_debugger {
 
         // else, Prints out the error
         println!(
-            "Error: {0:?}, Type: {error_type:?}, Severity: {error_severity:?}. ",
+            "[ERROR]: {0:?}, Type: {error_type:?}, Severity: {error_severity:?}. ",
             unsafe { (*error_info).pMessage }
         );
 
@@ -90,7 +90,60 @@ pub mod mod_vk_debugger {
     }
 
     /// Stub Implementation
-    pub fn return_debug_messenger() {}
+    pub fn return_debug_messenger(
+        instance_ptrs: &vk_sys::InstancePointers,
+        instance: &vk_sys::Instance,
+        p_debug_create_info: *const DebugUtilsMessengerCreateInfoEXT,
+        p_allocator: *const AllocationCallbacks,
+        p_messenger: *const DebugUtilsMessengerEXT,
+        validation: bool,
+    ) -> vk_sys::Result {
+        if !validation {
+            return vk_sys::ERROR_EXTENSION_NOT_PRESENT;
+        }
+
+        let result: vk_sys::Result = unsafe {
+            InstancePointers::CreateDebugUtilsMessengerEXT(
+                instance_ptrs,
+                *instance,
+                p_debug_create_info,
+                p_allocator,
+                p_messenger,
+            )
+        };
+
+        if result == SUCCESS {
+            return result;
+        }
+        vk_sys::ERROR_EXTENSION_NOT_PRESENT
+    }
+
+    pub fn destroy_debug_messenger(
+        instance_ptrs: &vk_sys::InstancePointers,
+        instance: &vk_sys::Instance,
+        debug_messenger: vk_sys::DebugUtilsMessengerEXT,
+        p_allocator: *const AllocationCallbacks,
+        validation: bool,
+    ) {
+        if !validation {
+            return;
+        }
+
+        let result: vk_sys::Result = unsafe {
+            InstancePointers::DestroyDebugUtilsMessengerEXT(
+                instance_ptrs,
+                *instance,
+                debug_messenger,
+                p_allocator,
+            )
+        };
+
+        if result == SUCCESS {
+            return;
+        } else {
+            panic!("Failed to delete debug messenger!");
+        }
+    }
 
     /// Returns AllocationCallbacks.
     pub fn return_allocation_callbacks() -> AllocationCallbacks {
@@ -130,7 +183,7 @@ pub mod mod_vk_debugger {
             return null_mut();
         }
 
-        println!("Allocating {} bytes with alignment {}", size, alignment);
+        // println!("Allocating {} bytes with alignment {}", size, alignment);
 
         // Creates new Metadata
         let header_layout = Layout::new::<AllocationInfo>();
@@ -186,7 +239,7 @@ pub mod mod_vk_debugger {
             return allocation_fn(_p_user_data, size, alignment, _scope);
         }
 
-        println!("Reallocating {} bytes of memory", size);
+        // println!("Reallocating {} bytes of memory", size);
 
         // Creates new Layout for Metadata
         let metadata_layout = Layout::new::<AllocationInfo>();
@@ -221,7 +274,7 @@ pub mod mod_vk_debugger {
 
     /// Provides AllocationCallbacks' Free Field
     extern "system" fn free_fn(_p_user_data: *mut c_void, p_memory: *mut c_void) {
-        println!("Freeing {:?} memory", p_memory);
+        // println!("Freeing {:?} memory", p_memory);
         if p_memory.is_null() {
             eprintln!("Vulkan attempted to free 0 bytes of memory");
             return;
