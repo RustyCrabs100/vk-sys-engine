@@ -63,10 +63,10 @@ use vk_sys::{
 
 // Minimal Debugging Library Imports (mini_log Imports)
 use mini_log::{Logger, LoggingType};
-
-const VALIDATION: bool = return_validation();
+/// Defined to contain if debugging is enabled
+pub const VALIDATION: bool = return_validation();
 /// The VkSysEngine Struct allows you to manually define certain aspects of the game.
-struct VkSysEngine {
+pub struct VkSysEngine {
     /// Sets window width
     window_width: usize,
     /// Sets window height
