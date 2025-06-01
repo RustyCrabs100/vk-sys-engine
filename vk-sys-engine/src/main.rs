@@ -40,7 +40,6 @@ mod vk_debugger;
 use vk_debugger::mod_vk_debugger::{
     checking_validation_support, destroy_debug_messenger, return_allocation_callbacks,
     return_debug_messenger, return_validation, vk_debug_messenger_init,
-
 };
 mod device_creation;
 mod instance_creation;
@@ -48,7 +47,7 @@ use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
 };
 // Standard Library Imports
-use core::ffi::{c_char};
+use core::ffi::c_char;
 use std::sync::Arc;
 use std::thread;
 
@@ -57,8 +56,8 @@ use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, EntryPoints, 
-    InstancePointers, NULL_HANDLE, Instance,  SUCCESS
+    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, EntryPoints, Instance, InstancePointers,
+    NULL_HANDLE, SUCCESS,
 };
 
 // Minimal Debugging Library Imports (mini_log Imports)
@@ -85,7 +84,7 @@ impl VkSysEngine {
         vulkan_version: u32,
         engine_version: u32,
         application_version: u32,
-    ) -> Self{
+    ) -> Self {
         Self {
             window_width,
             window_height,
@@ -148,12 +147,12 @@ impl VkSysEngine {
             instance_extensions_vec,
             instance_layers_count,
             instance_layers_vec,
-            VALIDATION, 
+            VALIDATION,
         );
         let instance_pointers: InstancePointers =
             unsafe { return_instance_pointers(&vulkan_lib, Some(&instance)) };
-        let device = 0;    
-        let debug_messenger_uninit: u64 = NULL_HANDLE;    
+        let device = 0;
+        let debug_messenger_uninit: u64 = NULL_HANDLE;
         let debug_messenger = return_debug_messenger(
             &instance_pointers,
             &instance,
@@ -187,14 +186,22 @@ impl VkSysEngine {
         allocation_callbacks: &AllocationCallbacks,
         instance: Instance,
         debug_messenger: vk_sys::DebugUtilsMessengerEXT,
-    ) { unsafe {
-        let allocation = allocation_callbacks as *const AllocationCallbacks;
-        if VALIDATION {
-            destroy_debug_messenger(instance_pointers, &instance, debug_messenger, allocation, VALIDATION);
+    ) {
+        unsafe {
+            let allocation = allocation_callbacks as *const AllocationCallbacks;
+            if VALIDATION {
+                destroy_debug_messenger(
+                    instance_pointers,
+                    &instance,
+                    debug_messenger,
+                    allocation,
+                    VALIDATION,
+                );
+            }
+            InstancePointers::DestroyInstance(instance_pointers, instance, allocation);
+            let _ = close_vulkan(lib);
         }
-        InstancePointers::DestroyInstance(instance_pointers, instance, allocation);
-        let _ = close_vulkan(lib);
-    }}
+    }
 }
 
 impl Default for VkSysEngine {
@@ -211,11 +218,11 @@ impl Default for VkSysEngine {
 
 fn main() {
     let mut game_engine: VkSysEngine = VkSysEngine::new(
-        600,
         800,
-        make_version(1,0,0,0),
-        make_version(0,1,0,0),
-        make_version(0,1,0,0),
+        600,
+        make_version(1, 0, 0, 0),
+        make_version(0, 1, 0, 0),
+        make_version(0, 1, 0, 0),
     );
     game_engine.run();
     println!("Working so far");

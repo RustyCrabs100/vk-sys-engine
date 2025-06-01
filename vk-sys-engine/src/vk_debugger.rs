@@ -19,8 +19,8 @@ pub mod mod_vk_debugger {
         DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT, DebugUtilsMessageSeverityFlagBitsEXT,
         DebugUtilsMessageTypeFlagsEXT, DebugUtilsMessengerCallbackDataEXT,
         DebugUtilsMessengerCreateInfoEXT, DebugUtilsMessengerEXT, FALSE, InstancePointers,
-        InternalAllocationType, LayerProperties, SUCCESS,
-        STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT, SystemAllocationScope,
+        InternalAllocationType, LayerProperties,
+        STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT, SUCCESS, SystemAllocationScope,
     };
 
     /// Returns Validation Support (For times when you can't immidiately check Layers)

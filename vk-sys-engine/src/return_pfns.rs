@@ -6,8 +6,6 @@
 pub mod mod_return_pfns {
     use crate::vulkan_loader::mod_vulkan_loader::return_instance_function_loader;
     // use crate::vulkan_loader::mod_vulkan_loader::return_get_instance_proc_addr_pfn;
-    
-
 
     use libloading::Library;
     use vk_sys::{DevicePointers, EntryPoints, InstancePointers};
@@ -34,11 +32,13 @@ pub mod mod_return_pfns {
     pub unsafe fn return_instance_pointers(
         lib: &Library,
         instance: Option<&vk_sys::Instance>,
-    ) -> InstancePointers { unsafe {
-        let loader = return_instance_function_loader(lib, instance);
+    ) -> InstancePointers {
+        unsafe {
+            let loader = return_instance_function_loader(lib, instance);
 
-        InstancePointers::load(loader)
-    }}
+            InstancePointers::load(loader)
+        }
+    }
 
     /// Returns DevicePointers (Currenty a Stub Implementation)
     pub unsafe fn return_device_pointers(lib: &Library) -> DevicePointers {

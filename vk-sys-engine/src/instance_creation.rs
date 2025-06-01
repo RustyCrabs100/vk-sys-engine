@@ -1,15 +1,15 @@
-pub mod mod_instance_creation {    
-    use vk_sys::{
-        ExtensionProperties, Instance, InstanceCreateInfo, LayerProperties, Result,
-        STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS, EntryPoints,
-        AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, ApplicationInfo, 
-    };
-    use crate::vk_debugger::mod_vk_debugger::vk_debug_messenger_init;
+pub mod mod_instance_creation {
     use crate::static_c_char_array;
-    use std::alloc::{alloc, Layout};
-    use core::ptr::{null_mut, null};
-    use core::mem::{zeroed};
-    use core::ffi::{c_void, c_char};
+    use crate::vk_debugger::mod_vk_debugger::vk_debug_messenger_init;
+    use core::ffi::{c_char, c_void};
+    use core::mem::zeroed;
+    use core::ptr::{null, null_mut};
+    use std::alloc::{Layout, alloc};
+    use vk_sys::{
+        AllocationCallbacks, ApplicationInfo, DebugUtilsMessengerCreateInfoEXT, EntryPoints,
+        ExtensionProperties, Instance, InstanceCreateInfo, LayerProperties, Result,
+        STRUCTURE_TYPE_APPLICATION_INFO, STRUCTURE_TYPE_INSTANCE_CREATE_INFO, SUCCESS,
+    };
     /// Creates Vulkan Instance
     pub fn create_instance(
         entry_pointers: &EntryPoints,
@@ -49,7 +49,7 @@ pub mod mod_instance_creation {
             enabledExtensionCount: extension_count,
             ppEnabledExtensionNames: extensions.as_ptr(),
         };
-        
+
         let debug_create_info: DebugUtilsMessengerCreateInfoEXT = vk_debug_messenger_init();
         if validation {
             instance_create_info.pNext =
@@ -224,4 +224,4 @@ pub mod mod_instance_creation {
         }
         return (extensions.as_slice(), extension_count);
     }
-}    
+}
