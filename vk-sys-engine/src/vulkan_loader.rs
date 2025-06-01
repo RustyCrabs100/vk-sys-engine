@@ -7,7 +7,7 @@
 pub mod mod_vulkan_loader {
     use core::ffi::{CStr, c_char, c_void};
     use libloading;
-    use libloading::{Library, Symbol};
+    use libloading::Library;
     use std::boxed::Box;
     use std::error::Error;
 
