@@ -244,8 +244,3 @@ mod tests {
         }
     }
 }
-
-// https://github.com/nagisa/rust_libloading/ - libloading Github
-// https://github.com/emoon/rust_minifb - minifb Github
-// The vk-sys github is not directly linkable, but we could use the vulkano github (since vulkano-rs is the dev)
-// https://github.com/vulkano-rs/vulkano
