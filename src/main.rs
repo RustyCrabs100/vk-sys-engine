@@ -43,6 +43,7 @@ use vk_debugger::mod_vk_debugger::{
 };
 mod device_creation;
 mod instance_creation;
+use device_creation::mod_device_creation::pick_physical_device;
 use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
 };
@@ -56,8 +57,7 @@ use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, EntryPoints, Instance, InstancePointers,
-    NULL_HANDLE, SUCCESS,
+    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, EntryPoints, Instance, InstancePointers, PhysicalDevice, NULL_HANDLE, SUCCESS
 };
 
 // Minimal Debugging Library Imports (mini_log Imports)
@@ -151,7 +151,7 @@ impl VkSysEngine {
         );
         let instance_pointers: InstancePointers =
             unsafe { return_instance_pointers(&vulkan_lib, Some(&instance)) };
-        let device = 0;
+        let physical_device: PhysicalDevice = pick_physical_device(&instance_pointers, &instance);
         let debug_messenger_uninit: u64 = NULL_HANDLE;
         let debug_messenger = return_debug_messenger(
             &instance_pointers,
