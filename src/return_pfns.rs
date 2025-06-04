@@ -4,11 +4,13 @@
 #![warn(unused_variables)]
 
 pub mod mod_return_pfns {
-    use crate::vulkan_loader::mod_vulkan_loader::return_instance_function_loader;
+    use crate::vulkan_loader::mod_vulkan_loader::{
+        return_device_function_loader, return_instance_function_loader,
+    };
     // use crate::vulkan_loader::mod_vulkan_loader::return_get_instance_proc_addr_pfn;
 
     use libloading::Library;
-    use vk_sys::{DevicePointers, EntryPoints, InstancePointers};
+    use vk_sys::{Device, DevicePointers, EntryPoints, InstancePointers};
 
     /// Returns EntryPoints for Instance Initalization
     pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
@@ -41,7 +43,12 @@ pub mod mod_return_pfns {
     }
 
     /// Returns DevicePointers (Currenty a Stub Implementation)
-    pub unsafe fn return_device_pointers(lib: &Library) -> DevicePointers {
-        todo!()
+    pub unsafe fn return_device_pointers(
+        instance_ptrs: &InstancePointers,
+        device: &Device,
+    ) -> DevicePointers {
+        let loader = unsafe { return_device_function_loader(instance_ptrs, *device) };
+
+        DevicePointers::load(loader)
     }
 }

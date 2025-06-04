@@ -4,7 +4,10 @@ pub mod mod_device_creation {
     use core::ptr::{null, null_mut};
     use std::alloc::{Layout, alloc};
     use vk_sys::{
-        AllocationCallbacks, Device, DeviceCreateInfo, DeviceQueueCreateInfo, ExtensionProperties, Instance, InstancePointers, LayerProperties, PhysicalDevice, PhysicalDeviceFeatures, PhysicalDeviceProperties, QueueFamilyProperties, Result, NULL_HANDLE, STRUCTURE_TYPE_DEVICE_CREATE_INFO, SUCCESS
+        AllocationCallbacks, Device, DeviceCreateInfo, DeviceQueueCreateInfo, ExtensionProperties,
+        Instance, InstancePointers, LayerProperties, NULL_HANDLE, PhysicalDevice,
+        PhysicalDeviceFeatures, PhysicalDeviceProperties, QueueFamilyProperties, Result,
+        STRUCTURE_TYPE_DEVICE_CREATE_INFO, SUCCESS,
     };
     /// Picks the Physical Device
     pub fn pick_physical_device(
@@ -14,11 +17,12 @@ pub mod mod_device_creation {
         let mut physical_device: PhysicalDevice = NULL_HANDLE.try_into().unwrap();
 
         let mut device_count: u32 = 0;
-        unsafe {
+        let mut p_device_count: *mut u32 = &mut device_count as *mut u32;
+        let result_counter: Result = unsafe {
             InstancePointers::EnumeratePhysicalDevices(
                 instance_ptrs,
                 *instance,
-                &mut device_count,
+                p_device_count,
                 null_mut(),
             )
         };
@@ -27,16 +31,25 @@ pub mod mod_device_creation {
             panic!("[UNRECOVERABLE]: [ERROR]: Failed to find GPUs with Vulkan Support!");
         }
 
-        let mut devices: Vec<PhysicalDevice> = Vec::new();
+        let device_layout: Layout = Layout::array::<PhysicalDevice>(device_count as usize)
+            .expect("Layout failure: Physical Devices");
+        let device_vec: *mut PhysicalDevice = unsafe{alloc(device_layout) as *mut PhysicalDevice};
 
-        let p_devices: *mut PhysicalDevice = devices.as_mut_ptr();
-        unsafe {
+        if device_vec.is_null() {
+            panic!("Alloation for Physical Device Vector failed!");
+        }
+
+        let result: Result = unsafe {
             InstancePointers::EnumeratePhysicalDevices(
                 instance_ptrs,
                 *instance,
-                &mut device_count,
-                p_devices,
+                p_device_count,
+                device_vec,
             )
+        };
+
+        let devices = unsafe {
+            Vec::from_raw_parts(device_vec, device_count as usize, device_count as usize)
         };
 
         for device in devices {
@@ -46,13 +59,21 @@ pub mod mod_device_creation {
             }
         }
 
+        if result_counter != SUCCESS {
+            panic!("[ERROR]: Failed to Count Physical Devices!");
+        }
+
+        if result != SUCCESS {
+            panic!("[ERROR]: Failed to Enumerate Physical devices!");
+        }
+
         if physical_device == NULL_HANDLE.try_into().unwrap() {
             panic!("[ERROR]: Failed to find a suitable GPU!");
         } else {
             physical_device
         }
     }
-
+    // !! ERROR! 
     /// Checks if the Physial Device can be used.
     fn is_device_suitable(instance_ptrs: &InstancePointers, device: PhysicalDevice) -> bool {
         let mut device_properties: PhysicalDeviceProperties = unsafe { zeroed() };
@@ -151,7 +172,7 @@ pub mod mod_device_creation {
     }
 
     pub fn create_logical_device(
-        instance_ptrs: &InstancePointers, 
+        instance_ptrs: &InstancePointers,
         device: &PhysicalDevice,
         device_layers: Vec<*const c_char>,
         device_layers_count: u32,
@@ -159,7 +180,7 @@ pub mod mod_device_creation {
         device_extension_count: u32,
         p_allocator: *const AllocationCallbacks,
         validation: bool,
-    ) {
+    ) -> Device {
         let indices: QueueFamilyIndices = find_queue_families(instance_ptrs, device);
         let valid_graphics_family: u32 = match indices.graphics_family {
             Some(x) => x,
@@ -199,24 +220,25 @@ pub mod mod_device_creation {
             pEnabledFeatures: p_device_features,
         };
 
-        let p_device_create_info: *const DeviceCreateInfo = 
+        let p_device_create_info: *const DeviceCreateInfo =
             &device_create_info as *const DeviceCreateInfo;
 
-        let mut logical_device: Device = unsafe {zeroed()};
-        let p_logical_device: *mut Device = &mut logical_device as *mut Device; 
+        let mut logical_device: Device = unsafe { zeroed() };
+        let p_logical_device: *mut Device = &mut logical_device as *mut Device;
         let device_result: Result = unsafe {
             InstancePointers::CreateDevice(
                 instance_ptrs,
                 *device,
                 p_device_create_info,
                 p_allocator,
-                p_logical_device
+                p_logical_device,
             )
         };
 
         if device_result != SUCCESS {
             panic!("Logical Device Failed to be made!");
         }
+        logical_device
     }
 
     pub fn return_device_layers(
@@ -268,7 +290,7 @@ pub mod mod_device_creation {
 
         if collector == SUCCESS {
             println!("Device Layer Collecting Successful.");
-            return (device_layer_count,device_layers_vec);
+            return (device_layer_count, device_layers_vec);
         } else {
             eprintln!("Device Layer Collecting Failed!");
         }
@@ -331,7 +353,7 @@ pub mod mod_device_creation {
 
         if collector == SUCCESS {
             println!("Device Extension Collecting Successful.");
-            return (device_extension_count,device_extensions_vec);
+            return (device_extension_count, device_extensions_vec);
         } else {
             panic!("Failed to collect Device Extensions!");
         }

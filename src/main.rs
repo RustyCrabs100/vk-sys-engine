@@ -43,22 +43,28 @@ use vk_debugger::mod_vk_debugger::{
 };
 mod device_creation;
 mod instance_creation;
-use device_creation::mod_device_creation::pick_physical_device;
+use device_creation::mod_device_creation::{
+    create_logical_device, pick_physical_device, return_device_extensions, return_device_layers,
+};
 use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
 };
 // Standard Library Imports
 use core::ffi::c_char;
-use std::sync::Arc;
 use std::thread;
+use std::{ptr::null, sync::Arc};
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
 
 // Minimal Vulkan Overhead Imports
 use vk_sys::{
-    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, EntryPoints, Instance, InstancePointers, PhysicalDevice, NULL_HANDLE, SUCCESS
+    AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, Device, DevicePointers, EntryPoints,
+    ExtensionProperties, Instance, InstancePointers, LayerProperties, NULL_HANDLE, PhysicalDevice,
+    SUCCESS,
 };
+
+use crate::return_pfns::mod_return_pfns::return_device_pointers;
 
 // Minimal Debugging Library Imports (mini_log Imports)
 /// Defined to contain if debugging is enabled
@@ -151,7 +157,6 @@ impl VkSysEngine {
         );
         let instance_pointers: InstancePointers =
             unsafe { return_instance_pointers(&vulkan_lib, Some(&instance)) };
-        let physical_device: PhysicalDevice = pick_physical_device(&instance_pointers, &instance);
         let debug_messenger_uninit: u64 = NULL_HANDLE;
         let debug_messenger = return_debug_messenger(
             &instance_pointers,
@@ -161,10 +166,36 @@ impl VkSysEngine {
             &debug_messenger_uninit as *const vk_sys::DebugUtilsMessengerEXT,
             VALIDATION,
         );
-
         if debug_messenger == SUCCESS {
             println!("Debug Messenger Setup Complete");
         }
+        let physical_device: PhysicalDevice = pick_physical_device(&instance_pointers, &instance);
+        let (logical_device_layer_count, logical_device_layers): (u32, Vec<LayerProperties>) =
+            return_device_layers(&instance_pointers, &physical_device, true);
+        let (logical_device_extension_count, logical_device_extensions): (
+            u32,
+            Vec<ExtensionProperties>,
+        ) = return_device_extensions(&instance_pointers, &physical_device, null());
+        let logical_device_extension_names: Vec<*const c_char> = logical_device_extensions
+            .iter()
+            .map(|extensions| extensions.extensionName.as_ptr())
+            .collect();
+        let logical_device_layer_names: Vec<*const c_char> = logical_device_layers
+            .iter()
+            .map(|layer| layer.layerName.as_ptr())
+            .collect();
+        let logical_device: Device = create_logical_device(
+            &instance_pointers,
+            &physical_device,
+            logical_device_layer_names,
+            logical_device_layer_count,
+            logical_device_extension_names,
+            logical_device_extension_count,
+            &allocation_callbacks as *const AllocationCallbacks,
+            VALIDATION,
+        );
+        let device_pointers: DevicePointers =
+            unsafe { return_device_pointers(&instance_pointers, &logical_device) };
         Self::main_loop();
         unsafe {
             Self::cleanup(
@@ -173,6 +204,8 @@ impl VkSysEngine {
                 &allocation_callbacks,
                 instance,
                 debug_messenger.into(),
+                &device_pointers,
+                logical_device,
             );
         }
     }
@@ -186,9 +219,12 @@ impl VkSysEngine {
         allocation_callbacks: &AllocationCallbacks,
         instance: Instance,
         debug_messenger: vk_sys::DebugUtilsMessengerEXT,
+        device_pointers: &DevicePointers,
+        logical_device: Device,
     ) {
         unsafe {
             let allocation = allocation_callbacks as *const AllocationCallbacks;
+            DevicePointers::DestroyDevice(device_pointers, logical_device, allocation);
             if VALIDATION {
                 destroy_debug_messenger(
                     instance_pointers,

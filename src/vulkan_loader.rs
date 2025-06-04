@@ -10,6 +10,7 @@ pub mod mod_vulkan_loader {
     use libloading::Library;
     use std::boxed::Box;
     use std::error::Error;
+    use vk_sys::{Device, InstancePointers, PFN_vkVoidFunction};
 
     /// Loads Vulkan in (Supports Multiple Platforms)
     pub unsafe fn load_vulkan() -> Result<libloading::Library, Box<dyn Error>> {
@@ -45,6 +46,16 @@ pub mod mod_vulkan_loader {
         // Returns a closure capturing get_instance_proc_addr
         move |name: &CStr| unsafe {
             get_instance_proc_addr(instance_owned, name.as_ptr()) as *const c_void
+        }
+    }
+
+    pub unsafe fn return_device_function_loader(
+        instance_ptrs: &InstancePointers,
+        logical_device: Device,
+    ) -> impl FnMut(&CStr) -> *const c_void {
+        move |name: &CStr| unsafe {
+            InstancePointers::GetDeviceProcAddr(instance_ptrs, logical_device, name.as_ptr())
+                as *const c_void
         }
     }
 
