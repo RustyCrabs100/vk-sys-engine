@@ -17,7 +17,7 @@ pub mod mod_device_creation {
         let mut physical_device: PhysicalDevice = NULL_HANDLE.try_into().unwrap();
 
         let mut device_count: u32 = 0;
-        let mut p_device_count: *mut u32 = &mut device_count as *mut u32;
+        let p_device_count: *mut u32 = &mut device_count as *mut u32;
         let result_counter: Result = unsafe {
             InstancePointers::EnumeratePhysicalDevices(
                 instance_ptrs,
@@ -53,7 +53,7 @@ pub mod mod_device_creation {
         };
 
         for device in devices {
-            if is_device_suitable(&*instance_ptrs, device) {
+            if is_device_suitable(instance_ptrs, device) {
                 physical_device = device;
                 break;
             }
@@ -87,10 +87,10 @@ pub mod mod_device_creation {
 
         let device_features: PhysicalDeviceFeatures = return_device_features(instance_ptrs, device);
 
-        return device_properties.deviceType
+        device_properties.deviceType
             == vk_sys::PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
                 | vk_sys::PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
-            && QueueFamilyIndices::is_complete(find_queue_families(&*instance_ptrs, &device));
+            && QueueFamilyIndices::is_complete(find_queue_families(instance_ptrs, &device))
     }
 
     fn return_device_features(
@@ -98,7 +98,7 @@ pub mod mod_device_creation {
         device: PhysicalDevice,
     ) -> PhysicalDeviceFeatures {
         let mut device_features: PhysicalDeviceFeatures = unsafe { zeroed() };
-        let mut p_device_features: *mut PhysicalDeviceFeatures =
+        let p_device_features: *mut PhysicalDeviceFeatures =
             &mut device_features as *mut PhysicalDeviceFeatures;
         unsafe {
             InstancePointers::GetPhysicalDeviceFeatures(instance_ptrs, device, p_device_features);
@@ -118,7 +118,7 @@ pub mod mod_device_creation {
 
     impl QueueFamilyIndices {
         pub fn is_complete(self) -> bool {
-            if self.graphics_family != None {
+            if self.graphics_family.is_some() {
                 return true;
             }
             false
@@ -134,7 +134,7 @@ pub mod mod_device_creation {
             graphics_family: None,
         };
 
-        let mut queue_family_count: u32 = 0;
+        let queue_family_count: u32 = 0;
         let p_queue_family_count: *mut u32 = queue_family_count as *mut u32;
         unsafe {
             InstancePointers::GetPhysicalDeviceQueueFamilyProperties(
@@ -158,7 +158,7 @@ pub mod mod_device_creation {
 
         let mut counter: u32 = 0;
         for queue_family in queue_families {
-            if *&indices.is_complete() {
+            if indices.is_complete() {
                 break;
             }
             if queue_family.queueFlags == vk_sys::QUEUE_GRAPHICS_BIT {
@@ -267,7 +267,7 @@ pub mod mod_device_creation {
 
         let collector: vk_sys::Result = unsafe {
             InstancePointers::EnumerateDeviceLayerProperties(
-                &*instance_ptrs,
+                instance_ptrs,
                 *device,
                 &mut device_layer_count,
                 device_layers,
@@ -296,7 +296,7 @@ pub mod mod_device_creation {
         }
 
         if !crash_if_fail {
-            return (0, device_layers_vec);
+            (0, device_layers_vec)
         } else {
             panic!("Developer Controlled Crash, Device Layers failed to load");
         }
@@ -329,7 +329,7 @@ pub mod mod_device_creation {
 
         let collector: vk_sys::Result = unsafe {
             InstancePointers::EnumerateDeviceExtensionProperties(
-                &*instance_ptrs,
+                instance_ptrs,
                 *device,
                 device_layers,
                 &mut device_extension_count,
@@ -353,7 +353,7 @@ pub mod mod_device_creation {
 
         if collector == SUCCESS {
             println!("Device Extension Collecting Successful.");
-            return (device_extension_count, device_extensions_vec);
+            (device_extension_count, device_extensions_vec)
         } else {
             panic!("Failed to collect Device Extensions!");
         }

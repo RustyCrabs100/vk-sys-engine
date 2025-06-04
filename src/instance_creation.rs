@@ -205,7 +205,7 @@ pub mod mod_instance_creation {
         for i in &mut *layers {
             layer_count += 1;
         }
-        return (layers.as_slice(), layer_count);
+        (layers.as_slice(), layer_count)
     }
 
     pub fn return_filtered_extensions<'a>(
@@ -222,6 +222,6 @@ pub mod mod_instance_creation {
         for i in &mut *extensions {
             extension_count += 1;
         }
-        return (extensions.as_slice(), extension_count);
+        (extensions.as_slice(), extension_count)
     }
 }

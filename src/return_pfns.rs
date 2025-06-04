@@ -15,7 +15,7 @@ pub mod mod_return_pfns {
     /// Returns EntryPoints for Instance Initalization
     pub unsafe fn return_entry_points(lib: &Library) -> EntryPoints {
         unsafe {
-            return EntryPoints {
+            EntryPoints {
                 CreateInstance: *lib
                     .get(b"vkCreateInstance\0")
                     .expect("Failed to load vkCreateInstance"),
@@ -25,7 +25,7 @@ pub mod mod_return_pfns {
                 EnumerateInstanceLayerProperties: *lib
                     .get(b"vkEnumerateInstanceLayerProperties\0")
                     .expect("Failed to load vkEnumerateInstanceLayerProperties"),
-            };
+            }
         }
     }
 

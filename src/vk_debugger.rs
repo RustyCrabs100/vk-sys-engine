@@ -28,7 +28,7 @@ pub mod mod_vk_debugger {
         if cfg!(debug_assertions) {
             return true;
         }
-        return false;
+        false
     }
 
     /// Same thing as return_validation(), but checks Vulkan Instance Layers
@@ -139,7 +139,6 @@ pub mod mod_vk_debugger {
         };
 
         if result == SUCCESS {
-            return;
         } else {
             panic!("Failed to delete debug messenger!");
         }
@@ -147,14 +146,14 @@ pub mod mod_vk_debugger {
 
     /// Returns AllocationCallbacks.
     pub fn return_allocation_callbacks() -> AllocationCallbacks {
-        return AllocationCallbacks {
+        AllocationCallbacks {
             pUserData: null_mut(),
             pfnAllocation: allocation_fn,
             pfnReallocation: reallocation_fn,
             pfnFree: free_fn,
             pfnInternalAllocation: internal_alloc_notify,
             pfnInternalFree: internal_free_notify,
-        };
+        }
     }
 
     /// This is for FFI & Rust Safe Deallocation
@@ -209,10 +208,10 @@ pub mod mod_vk_debugger {
             (*header_mem).alignment = alignment;
 
             // Adds offset to mem
-            let valid_return_mem = mem.add(offset) as *mut c_void;
+            
 
             // returns mem
-            valid_return_mem
+            mem.add(offset) as *mut c_void
         }
     }
 
@@ -312,10 +311,8 @@ pub mod mod_vk_debugger {
             }
             // Gets proper memory
             let alloc_layout =
-                Layout::from_size_align(alloc_size, alloc_alignment).expect(&format!(
-                    "Invalid layout: size = {}, alignment = {}",
-                    alloc_size, alloc_alignment
-                ));
+                Layout::from_size_align(alloc_size, alloc_alignment).unwrap_or_else(|_| panic!("Invalid layout: size = {}, alignment = {}",
+                    alloc_size, alloc_alignment));
 
             let (layout, _offset) = alloc_layout_uninit.extend(alloc_layout).unwrap();
 

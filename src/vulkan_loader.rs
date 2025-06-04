@@ -10,7 +10,7 @@ pub mod mod_vulkan_loader {
     use libloading::Library;
     use std::boxed::Box;
     use std::error::Error;
-    use vk_sys::{Device, InstancePointers, PFN_vkVoidFunction};
+    use vk_sys::{Device, InstancePointers};
 
     /// Loads Vulkan in (Supports Multiple Platforms)
     pub unsafe fn load_vulkan() -> Result<libloading::Library, Box<dyn Error>> {
@@ -21,7 +21,7 @@ pub mod mod_vulkan_loader {
                 .or_else(|_| Library::new("libvulkan.so.1"))
                 // MacOS Vulkan Loader
                 .or_else(|_| Library::new("libvulkan.dylib"));
-            return Ok(vulkan_lib?);
+            Ok(vulkan_lib?)
         }
     }
 
@@ -39,7 +39,7 @@ pub mod mod_vulkan_loader {
                 .expect("Could not load Instance Function Pointer Getter (vkGetInstanceProcAddr)")
         };
 
-        let instance_unop: &usize = instance.unwrap_or(&(0 as usize));
+        let instance_unop: &usize = instance.unwrap_or(&0_usize);
 
         let instance_owned: usize = *instance_unop;
 
