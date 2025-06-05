@@ -5,23 +5,6 @@
 //!
 //! If you require a Game Engine that currently works, use Bevy.
 
-// On your next commit, make sure to replace
-// Library::get() with vkGetInstanceProcAddr
-// and vkGetDeviceProcAddr, as those are for
-// properly getting vulkan function pointers.
-// Library::get() should only be used to load
-// in vulkan and to load in
-// vkGetInstanceProcAddr
-// How to do this:
-// For core Vulkan features:
-// Use Library::get() from libloading
-// For Instance/Device Function Pointers:
-// Use Library::get() to get:
-// vkGetInstanceProcAddr, and
-// vkGetDeviceProcAddr.
-// Then, use the proper function to call the
-// Instance or Device Function Pointer
-
 // Stopping Rust Compiler from complaning
 #![warn(unsafe_op_in_unsafe_fn)]
 #![warn(unused_mut)]
@@ -35,7 +18,7 @@ use utils::mod_utils::make_version;
 mod create_window;
 use create_window::mod_window::window_creation;
 mod return_pfns;
-use return_pfns::mod_return_pfns::{return_entry_points, return_instance_pointers}; // return_instance_pointers};
+use return_pfns::mod_return_pfns::{return_entry_points, return_instance_pointers};
 mod vk_debugger;
 use vk_debugger::mod_vk_debugger::{
     checking_validation_support, destroy_debug_messenger, return_allocation_callbacks,
@@ -267,9 +250,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use crate::vulkan_loader::mod_vulkan_loader::return_get_instance_proc_addr_pfn;
-    use core::ffi::c_void;
-    use core::ptr::null;
 
     #[test]
     fn validation_test() {
