@@ -76,21 +76,21 @@ pub mod mod_device_creation {
     // !! ERROR! 
     /// Checks if the Physial Device can be used.
     fn is_device_suitable(instance_ptrs: &InstancePointers, device: PhysicalDevice) -> bool {
-        let mut device_properties: PhysicalDeviceProperties = unsafe { zeroed() };
+        let mut device_properties_layout: Layout = unsafe {Layout::new::<PhysicalDeviceProperties>()};
+        let p_device_properties: *mut PhysicalDeviceProperties = unsafe {alloc(device_properties_layout) as *mut PhysicalDeviceProperties};
         unsafe {
             InstancePointers::GetPhysicalDeviceProperties(
                 instance_ptrs,
                 device,
-                &mut device_properties,
+                p_device_properties,
             )
         };
 
         let device_features: PhysicalDeviceFeatures = return_device_features(instance_ptrs, device);
 
-        device_properties.deviceType
-            == vk_sys::PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-                | vk_sys::PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
-            && QueueFamilyIndices::is_complete(find_queue_families(instance_ptrs, &device))
+        let device_properties = unsafe{&*p_device_properties};
+
+        QueueFamilyIndices::is_complete(find_queue_families(instance_ptrs, &device))
     }
 
     fn return_device_features(
@@ -134,35 +134,39 @@ pub mod mod_device_creation {
             graphics_family: None,
         };
 
-        let queue_family_count: u32 = 0;
-        let p_queue_family_count: *mut u32 = queue_family_count as *mut u32;
+        let mut queue_family_count: u32 = 0;
         unsafe {
             InstancePointers::GetPhysicalDeviceQueueFamilyProperties(
                 instance_ptrs,
                 *device,
-                p_queue_family_count,
+                &mut queue_family_count,
                 null_mut(),
             )
-        }
+        };
 
-        let mut queue_families: Vec<QueueFamilyProperties> = Vec::new();
-        let p_queue_families: *mut QueueFamilyProperties = queue_families.as_mut_ptr();
+        let layout_queue_families = Layout::array::<QueueFamilyProperties>(queue_family_count as usize).unwrap();
+        let p_queue_families: *mut QueueFamilyProperties = 
+            unsafe{alloc(layout_queue_families) as *mut QueueFamilyProperties};
         unsafe {
             InstancePointers::GetPhysicalDeviceQueueFamilyProperties(
                 instance_ptrs,
                 *device,
-                p_queue_family_count,
+                &mut queue_family_count,
                 p_queue_families,
             )
         }
+
+        let queue_families: Vec<QueueFamilyProperties> =
+            unsafe{Vec::from_raw_parts(p_queue_families, queue_family_count as usize, queue_family_count as usize)};
 
         let mut counter: u32 = 0;
         for queue_family in queue_families {
             if indices.is_complete() {
                 break;
             }
-            if queue_family.queueFlags == vk_sys::QUEUE_GRAPHICS_BIT {
+            if queue_family.queueFlags & vk_sys::QUEUE_GRAPHICS_BIT != 0 {
                 indices.graphics_family = Some(counter);
+                break;
             }
 
             counter += 1;

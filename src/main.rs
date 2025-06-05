@@ -256,7 +256,7 @@ fn main() {
     let mut game_engine: VkSysEngine = VkSysEngine::new(
         800,
         600,
-        make_version(1, 0, 0, 0),
+        make_version(1, 3, 296, 0),
         make_version(0, 1, 0, 0),
         make_version(0, 1, 0, 0),
     );
