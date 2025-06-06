@@ -16,9 +16,11 @@ use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan};
 mod utils;
 use utils::mod_utils::make_version;
 mod create_window;
-use create_window::mod_window::window_creation;
+use create_window::mod_window::*;
 mod return_pfns;
-use return_pfns::mod_return_pfns::{return_entry_points, return_instance_pointers};
+use return_pfns::mod_return_pfns::{
+    return_device_pointers, return_entry_points, return_instance_pointers,
+};
 mod vk_debugger;
 use vk_debugger::mod_vk_debugger::{
     checking_validation_support, destroy_debug_messenger, return_allocation_callbacks,
@@ -44,20 +46,21 @@ use libloading::Library;
 use vk_sys::{
     AllocationCallbacks, DebugUtilsMessengerCreateInfoEXT, Device, DevicePointers, EntryPoints,
     ExtensionProperties, Instance, InstancePointers, LayerProperties, NULL_HANDLE, PhysicalDevice,
-    SUCCESS,
+    Queue, SUCCESS,
 };
 
-use crate::return_pfns::mod_return_pfns::return_device_pointers;
+use crate::device_creation::mod_device_creation::create_graphics_queue;
 
 // Minimal Debugging Library Imports (mini_log Imports)
 /// Defined to contain if debugging is enabled
 pub const VALIDATION: bool = return_validation();
 /// The VkSysEngine Struct allows you to manually define certain aspects of the game.
+#[derive(Debug, Clone, PartialEq)]
 pub struct VkSysEngine {
     /// Sets window width
-    window_width: usize,
+    window_width: u32,
     /// Sets window height
-    window_height: usize,
+    window_height: u32,
     /// Sets Highest Usable Vulkan Version
     vulkan_version: u32,
     /// Sets Game Engine Version
@@ -68,8 +71,8 @@ pub struct VkSysEngine {
 
 impl VkSysEngine {
     pub fn new(
-        window_width: usize,
-        window_height: usize,
+        window_width: u32,
+        window_height: u32,
         vulkan_version: u32,
         engine_version: u32,
         application_version: u32,
@@ -85,7 +88,7 @@ impl VkSysEngine {
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
-        window_creation(self.window_height, self.window_width);
+        AppWindow::run_engine_window(AppWindow::create_event_loop());
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
@@ -175,10 +178,15 @@ impl VkSysEngine {
             logical_device_extension_names,
             logical_device_extension_count,
             &allocation_callbacks as *const AllocationCallbacks,
-            VALIDATION,
         );
         let device_pointers: DevicePointers =
             unsafe { return_device_pointers(&instance_pointers, &logical_device) };
+        let graphics_queue: Queue = create_graphics_queue(
+            &instance_pointers,
+            &device_pointers,
+            &physical_device,
+            &logical_device,
+        );
         Self::main_loop();
         unsafe {
             Self::cleanup(
@@ -197,19 +205,19 @@ impl VkSysEngine {
 
     /// Cleans up data Rust can't
     unsafe fn cleanup(
-        lib: Library,
-        instance_pointers: &InstancePointers,
-        allocation_callbacks: &AllocationCallbacks,
-        instance: Instance,
+        lib: libloading::Library,
+        instance_pointers: &vk_sys::InstancePointers,
+        allocation_callbacks: &vk_sys::AllocationCallbacks,
+        instance: vk_sys::Instance,
         debug_messenger: vk_sys::DebugUtilsMessengerEXT,
-        device_pointers: &DevicePointers,
-        logical_device: Device,
+        device_pointers: &vk_sys::DevicePointers,
+        logical_device: vk_sys::Device,
     ) {
         unsafe {
-            let allocation = allocation_callbacks as *const AllocationCallbacks;
-            DevicePointers::DestroyDevice(device_pointers, logical_device, allocation);
+            let allocation = allocation_callbacks as *const vk_sys::AllocationCallbacks;
+            vk_sys::DevicePointers::DestroyDevice(device_pointers, logical_device, allocation);
             if VALIDATION {
-                destroy_debug_messenger(
+                crate::destroy_debug_messenger(
                     instance_pointers,
                     &instance,
                     debug_messenger,
@@ -217,8 +225,8 @@ impl VkSysEngine {
                     VALIDATION,
                 );
             }
-            InstancePointers::DestroyInstance(instance_pointers, instance, allocation);
-            let _ = close_vulkan(lib);
+            vk_sys::InstancePointers::DestroyInstance(instance_pointers, instance, allocation);
+            let _ = crate::close_vulkan(lib);
         }
     }
 }

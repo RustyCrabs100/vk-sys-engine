@@ -4,10 +4,10 @@ pub mod mod_device_creation {
     use core::ptr::{null, null_mut};
     use std::alloc::{Layout, alloc};
     use vk_sys::{
-        AllocationCallbacks, Device, DeviceCreateInfo, DeviceQueueCreateInfo, ExtensionProperties,
-        Instance, InstancePointers, LayerProperties, NULL_HANDLE, PhysicalDevice,
-        PhysicalDeviceFeatures, PhysicalDeviceProperties, QueueFamilyProperties, Result,
-        STRUCTURE_TYPE_DEVICE_CREATE_INFO, SUCCESS,
+        AllocationCallbacks, Device, DeviceCreateInfo, DevicePointers, DeviceQueueCreateInfo,
+        ExtensionProperties, Instance, InstancePointers, LayerProperties, NULL_HANDLE,
+        PhysicalDevice, PhysicalDeviceFeatures, PhysicalDeviceProperties, Queue,
+        QueueFamilyProperties, Result, STRUCTURE_TYPE_DEVICE_CREATE_INFO, SUCCESS,
     };
     /// Picks the Physical Device
     pub fn pick_physical_device(
@@ -33,7 +33,8 @@ pub mod mod_device_creation {
 
         let device_layout: Layout = Layout::array::<PhysicalDevice>(device_count as usize)
             .expect("Layout failure: Physical Devices");
-        let device_vec: *mut PhysicalDevice = unsafe{alloc(device_layout) as *mut PhysicalDevice};
+        let device_vec: *mut PhysicalDevice =
+            unsafe { alloc(device_layout) as *mut PhysicalDevice };
 
         if device_vec.is_null() {
             panic!("Alloation for Physical Device Vector failed!");
@@ -73,11 +74,13 @@ pub mod mod_device_creation {
             physical_device
         }
     }
-    // !! ERROR! 
+    // !! ERROR!
     /// Checks if the Physial Device can be used.
     fn is_device_suitable(instance_ptrs: &InstancePointers, device: PhysicalDevice) -> bool {
-        let mut device_properties_layout: Layout = unsafe {Layout::new::<PhysicalDeviceProperties>()};
-        let p_device_properties: *mut PhysicalDeviceProperties = unsafe {alloc(device_properties_layout) as *mut PhysicalDeviceProperties};
+        let mut device_properties_layout: Layout =
+            unsafe { Layout::new::<PhysicalDeviceProperties>() };
+        let p_device_properties: *mut PhysicalDeviceProperties =
+            unsafe { alloc(device_properties_layout) as *mut PhysicalDeviceProperties };
         unsafe {
             InstancePointers::GetPhysicalDeviceProperties(
                 instance_ptrs,
@@ -88,7 +91,7 @@ pub mod mod_device_creation {
 
         let device_features: PhysicalDeviceFeatures = return_device_features(instance_ptrs, device);
 
-        let device_properties = unsafe{&*p_device_properties};
+        let device_properties = unsafe { &*p_device_properties };
 
         QueueFamilyIndices::is_complete(find_queue_families(instance_ptrs, &device))
     }
@@ -144,9 +147,10 @@ pub mod mod_device_creation {
             )
         };
 
-        let layout_queue_families = Layout::array::<QueueFamilyProperties>(queue_family_count as usize).unwrap();
-        let p_queue_families: *mut QueueFamilyProperties = 
-            unsafe{alloc(layout_queue_families) as *mut QueueFamilyProperties};
+        let layout_queue_families =
+            Layout::array::<QueueFamilyProperties>(queue_family_count as usize).unwrap();
+        let p_queue_families: *mut QueueFamilyProperties =
+            unsafe { alloc(layout_queue_families) as *mut QueueFamilyProperties };
         unsafe {
             InstancePointers::GetPhysicalDeviceQueueFamilyProperties(
                 instance_ptrs,
@@ -156,8 +160,13 @@ pub mod mod_device_creation {
             )
         }
 
-        let queue_families: Vec<QueueFamilyProperties> =
-            unsafe{Vec::from_raw_parts(p_queue_families, queue_family_count as usize, queue_family_count as usize)};
+        let queue_families: Vec<QueueFamilyProperties> = unsafe {
+            Vec::from_raw_parts(
+                p_queue_families,
+                queue_family_count as usize,
+                queue_family_count as usize,
+            )
+        };
 
         let mut counter: u32 = 0;
         for queue_family in queue_families {
@@ -183,7 +192,6 @@ pub mod mod_device_creation {
         device_extensions: Vec<*const c_char>,
         device_extension_count: u32,
         p_allocator: *const AllocationCallbacks,
-        validation: bool,
     ) -> Device {
         let indices: QueueFamilyIndices = find_queue_families(instance_ptrs, device);
         let valid_graphics_family: u32 = match indices.graphics_family {
@@ -361,5 +369,32 @@ pub mod mod_device_creation {
         } else {
             panic!("Failed to collect Device Extensions!");
         }
+    }
+
+    pub fn create_graphics_queue(
+        instance_ptrs: &InstancePointers,
+        device_pointers: &DevicePointers,
+        physical_device: &PhysicalDevice,
+        logical_device: &Device,
+    ) -> Queue {
+        let indices: QueueFamilyIndices = find_queue_families(instance_ptrs, physical_device);
+        let true_indices = match indices.graphics_family {
+            Some(x) => x,
+            None => panic!("Graphics Family Not Complete!"),
+        };
+
+        let mut graphics_queue: Queue = NULL_HANDLE.try_into().unwrap();
+        let p_graphics_queue: *mut Queue = &mut graphics_queue as *mut Queue;
+        unsafe {
+            DevicePointers::GetDeviceQueue(
+                device_pointers,
+                *logical_device,
+                true_indices,
+                0,
+                p_graphics_queue,
+            );
+        }
+
+        return graphics_queue;
     }
 }

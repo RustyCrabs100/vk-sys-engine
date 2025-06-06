@@ -208,7 +208,6 @@ pub mod mod_vk_debugger {
             (*header_mem).alignment = alignment;
 
             // Adds offset to mem
-            
 
             // returns mem
             mem.add(offset) as *mut c_void
@@ -311,8 +310,12 @@ pub mod mod_vk_debugger {
             }
             // Gets proper memory
             let alloc_layout =
-                Layout::from_size_align(alloc_size, alloc_alignment).unwrap_or_else(|_| panic!("Invalid layout: size = {}, alignment = {}",
-                    alloc_size, alloc_alignment));
+                Layout::from_size_align(alloc_size, alloc_alignment).unwrap_or_else(|_| {
+                    panic!(
+                        "Invalid layout: size = {}, alignment = {}",
+                        alloc_size, alloc_alignment
+                    )
+                });
 
             let (layout, _offset) = alloc_layout_uninit.extend(alloc_layout).unwrap();
 

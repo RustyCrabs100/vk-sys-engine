@@ -13,8 +13,8 @@ categories = ["Game development", "Game engines", "Rendering"]
 [dependencies]
 libloading = "0.8.7"
 mini_log = "0.1.0"
-minifb = "0.28.0"
 vk-sys = "0.7.0"
+winit = "0.30.11"
 
 [profile.dev]
 opt-level = 0

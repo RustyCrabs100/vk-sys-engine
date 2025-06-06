@@ -4,7 +4,13 @@
 #![warn(unused_variables)]
 
 pub mod mod_window {
-    use minifb::{Key, Window, WindowOptions};
+    use winit::{
+        application::ApplicationHandler,
+        dpi::LogicalSize,
+        event::{Event, WindowEvent},
+        event_loop::{self, ActiveEventLoop, ControlFlow, EventLoop},
+        window::{self, Window, WindowAttributes, WindowButtons},
+    };
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavaliable)
     pub mod input_handler {
@@ -16,35 +22,52 @@ pub mod mod_window {
         pub fn mouse_input_handler() {}
     }
 
-    /// Creates a Window
-    pub fn window_creation(height: usize, width: usize) {
-        // Creates a buffer
-        let mut buffer: Vec<u32> = vec![0; width * height];
+    #[derive(Default)]
+    pub struct AppWindow {
+        window: Option<Window>,
+    }
 
-        // Creates a Window, Panics if fails.
-        let mut window = Window::new(
-            "Test - ESC to exit",
-            width,
-            height,
-            WindowOptions {
-                resize: false,
-                ..WindowOptions::default()
-            },
-        )
-        .unwrap_or_else(|e| {
-            panic!("{}", e);
-        });
+    impl AppWindow {
+        pub fn create_event_loop() -> EventLoop<()> {
+            let event_loop = EventLoop::new().unwrap();
 
-        // Limit to max ~60 fps update rate
-        window.set_target_fps(60);
+            event_loop.set_control_flow(ControlFlow::Poll);
 
-        while window.is_open() && !window.is_key_down(Key::Escape) {
-            for i in buffer.iter_mut() {
-                *i = 0
+            event_loop
+        }
+
+        pub fn run_engine_window(event_loop: EventLoop<()>) {
+            let mut app = AppWindow::default();
+            event_loop.run_app(&mut app).unwrap();
+        }
+    }
+
+    impl ApplicationHandler for AppWindow {
+        fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+            self.window = Some(
+                event_loop
+                    .create_window(Window::default_attributes())
+                    .unwrap(),
+            );
+        }
+
+        fn window_event(
+            &mut self,
+            event_loop: &ActiveEventLoop,
+            window_id: window::WindowId,
+            event: WindowEvent,
+        ) {
+            match event {
+                WindowEvent::CloseRequested => {
+                    println!("Closed Requested; Stopping Program");
+                    event_loop.exit();
+                }
+                WindowEvent::Destroyed => println!("Window has been Destroyed"),
+                WindowEvent::RedrawRequested => {
+                    self.window.as_ref().unwrap().request_redraw();
+                }
+                _ => (),
             }
-
-            // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-            window.update_with_buffer(&buffer, width, height).unwrap();
         }
     }
 }
