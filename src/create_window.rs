@@ -8,7 +8,7 @@ pub mod mod_window {
         application::ApplicationHandler, dpi::LogicalSize, event::{Event, WindowEvent}, event_loop::{self, ActiveEventLoop, ControlFlow, EventLoop}, keyboard::KeyCode, window::{self, Window, WindowAttributes}
     };
     use std::{io::Error, sync::{
-        Arc, Mutex
+        Arc, Condvar, Mutex
     }};
     use smol::block_on;
 
@@ -26,7 +26,7 @@ pub mod mod_window {
     pub struct AppWindow {
         pub window: Arc<Mutex<Option<Window>>>,
         pub window_attr: WindowAttributes,
-        pub initalized_window: bool,
+        pub initalized_window: Arc<(Mutex<bool>, Condvar)>,
     }
 
     impl AppWindow {
@@ -45,7 +45,7 @@ pub mod mod_window {
             Self {
                 window: Arc::new(Mutex::new(None)),
                 window_attr: attrs,
-                initalized_window: false
+                initalized_window: Arc::new((Mutex::new(false), Condvar::new()))
             }
         }
 
@@ -73,10 +73,6 @@ pub mod mod_window {
             event_loop.run_app(&mut app).unwrap();
         }
 
-        pub fn is_initalized(&self) -> bool {
-            self.initalized_window
-        }
-
         pub async fn init_optional_field(&mut self, value: Window) -> Result<Arc<Mutex<Option<Window>>>, Error> {
             self.window = Arc::new(Mutex::new(Some(value)));
             Ok(self.window.clone())
@@ -90,8 +86,10 @@ pub mod mod_window {
                     .create_window(self.window_attr.clone())
                     .unwrap()).await.unwrap();
             });
-            
-            self.initalized_window = true;
+            let (lock, cvar) = &*self.initalized_window;
+            let mut ready = lock.lock().unwrap();
+            *ready = true;
+            cvar.notify_all();
         }
 
         fn window_event(
@@ -103,7 +101,9 @@ pub mod mod_window {
             match event {
                 WindowEvent::CloseRequested => {
                     println!("Closed Requested; Stopping Program");
-                    event_loop.exit();
+                    // Force exit because Event Loop isnt closing for some odd reason.
+                    // TODO: Fix the Bug stated above ^.
+                    std::process::exit(0);
                 }
                 WindowEvent::Destroyed => println!("Window has been Destroyed"),
                 WindowEvent::RedrawRequested => {

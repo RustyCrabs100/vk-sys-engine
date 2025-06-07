@@ -94,17 +94,12 @@ impl VkSysEngine {
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
         let mut window_init: bool = false;
-        let app_window_creator = AppWindow::new(
+        let app_window_creator = Arc::new(AppWindow::new(
             "Test - Vulkan Engine",
             800,
             600,
             false
-        );
-        if app_window_creator.window.lock().as_ref().unwrap().as_ref().is_some() {
-            window_init = true;
-        } else {
-            println!("Waiting for Window to be Some()");
-        }
+        ));
         AppWindow::run_engine_window(
             AppWindow::create_event_loop(),
             "Test - Vulkan Engine",
@@ -112,6 +107,12 @@ impl VkSysEngine {
             600,
             false
         );
+        let (lock, cvar) = &*app_window_creator.initalized_window;
+        let mut ready = lock.lock().unwrap();
+        while !*ready {
+            ready = cvar.wait(ready).unwrap();
+        }
+        println!("Window has been made");
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
