@@ -34,6 +34,8 @@ use device_creation::mod_device_creation::{
 use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
 };
+mod create_surface;
+use create_surface::mod_create_surface::create_win32_surface;
 // Standard Library Imports
 use core::ffi::c_char;
 use std::thread;
@@ -48,6 +50,9 @@ use vk_sys::{
     ExtensionProperties, Instance, InstancePointers, LayerProperties, NULL_HANDLE, PhysicalDevice,
     Queue, SUCCESS,
 };
+
+// Async Compute Thingy's
+use smol::*;
 
 use crate::device_creation::mod_device_creation::create_graphics_queue;
 
@@ -88,7 +93,25 @@ impl VkSysEngine {
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
-        AppWindow::run_engine_window(AppWindow::create_event_loop());
+        let mut window_init: bool = false;
+        let app_window_creator = AppWindow::new(
+            "Test - Vulkan Engine",
+            800,
+            600,
+            false
+        );
+        if app_window_creator.window.lock().as_ref().unwrap().as_ref().is_some() {
+            window_init = true;
+        } else {
+            println!("Waiting for Window to be Some()");
+        }
+        AppWindow::run_engine_window(
+            AppWindow::create_event_loop(),
+            "Test - Vulkan Engine",
+            800,
+            600,
+            false
+        );
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
@@ -186,6 +209,23 @@ impl VkSysEngine {
             &device_pointers,
             &physical_device,
             &logical_device,
+        );  
+        if app_window_creator.window.lock().as_ref().unwrap().as_ref().is_some() {
+            println!("Window has been created");
+        } else {
+            panic!("Window failed to be initalized on time!");
+        }
+        let binding = app_window_creator.window.lock();
+        let app_window_creator_ext = binding.as_ref().unwrap().as_ref();
+        let app_window = match app_window_creator_ext {
+            Some(w) => w,
+            None => panic!("Window Failed to Initalize, timer panic failed"),
+        };
+        let surface = create_win32_surface(
+            &instance_pointers,
+            &instance,
+            &app_window,
+            &allocation_callbacks
         );
         Self::main_loop();
         unsafe {

@@ -5,12 +5,12 @@
 
 pub mod mod_window {
     use winit::{
-        application::ApplicationHandler,
-        dpi::LogicalSize,
-        event::{Event, WindowEvent},
-        event_loop::{self, ActiveEventLoop, ControlFlow, EventLoop},
-        window::{self, Window, WindowAttributes, WindowButtons},
+        application::ApplicationHandler, dpi::LogicalSize, event::{Event, WindowEvent}, event_loop::{self, ActiveEventLoop, ControlFlow, EventLoop}, keyboard::KeyCode, window::{self, Window, WindowAttributes}
     };
+    use std::{io::Error, sync::{
+        Arc, Mutex
+    }};
+    use smol::block_on;
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavaliable)
     pub mod input_handler {
@@ -24,10 +24,31 @@ pub mod mod_window {
 
     #[derive(Default)]
     pub struct AppWindow {
-        window: Option<Window>,
+        pub window: Arc<Mutex<Option<Window>>>,
+        pub window_attr: WindowAttributes,
+        pub initalized_window: bool,
     }
 
     impl AppWindow {
+        pub fn new(
+            title: &str,
+            width: u32,
+            height: u32,
+            resizable: bool
+        ) -> Self {
+            let mut attrs = WindowAttributes::default();
+            attrs.title = title.to_string();
+            attrs.inner_size = Some(LogicalSize::new(width, height).into());
+            attrs.resizable = resizable;
+
+
+            Self {
+                window: Arc::new(Mutex::new(None)),
+                window_attr: attrs,
+                initalized_window: false
+            }
+        }
+
         pub fn create_event_loop() -> EventLoop<()> {
             let event_loop = EventLoop::new().unwrap();
 
@@ -36,19 +57,41 @@ pub mod mod_window {
             event_loop
         }
 
-        pub fn run_engine_window(event_loop: EventLoop<()>) {
-            let mut app = AppWindow::default();
+        pub fn run_engine_window(
+            event_loop: EventLoop<()>,
+            title: &str,
+            width: u32,
+            height: u32,
+            resizable: bool
+        ) {
+            let mut app = AppWindow::new(
+                title,
+                width,
+                height,
+                resizable
+            );
             event_loop.run_app(&mut app).unwrap();
+        }
+
+        pub fn is_initalized(&self) -> bool {
+            self.initalized_window
+        }
+
+        pub async fn init_optional_field(&mut self, value: Window) -> Result<Arc<Mutex<Option<Window>>>, Error> {
+            self.window = Arc::new(Mutex::new(Some(value)));
+            Ok(self.window.clone())
         }
     }
 
     impl ApplicationHandler for AppWindow {
         fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-            self.window = Some(
-                event_loop
-                    .create_window(Window::default_attributes())
-                    .unwrap(),
-            );
+            block_on(async {
+                self.window = self.init_optional_field(event_loop
+                    .create_window(self.window_attr.clone())
+                    .unwrap()).await.unwrap();
+            });
+            
+            self.initalized_window = true;
         }
 
         fn window_event(
@@ -64,7 +107,7 @@ pub mod mod_window {
                 }
                 WindowEvent::Destroyed => println!("Window has been Destroyed"),
                 WindowEvent::RedrawRequested => {
-                    self.window.as_ref().unwrap().request_redraw();
+                    self.window.lock().as_ref().unwrap().as_ref().map(|window| window.request_redraw());
                 }
                 _ => (),
             }
