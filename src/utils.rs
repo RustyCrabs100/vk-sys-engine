@@ -6,7 +6,6 @@
 pub mod mod_utils {
     use smol::block_on;
 
-
     /// Returns a readable version in u32.
     pub fn make_version(major: u8, minor: u8, patch: u16, build: u8) -> u32 {
         ((major as u32) << 24) | ((minor as u32) << 16) | ((patch as u32) << 8) | (build as u32)
@@ -23,7 +22,7 @@ pub mod mod_utils {
             patch = ((version >> 8) & 0xFF) as u16;
             build = (version & 0xFF) as u8;
         });
-        
+
         (major, minor, patch, build)
     }
 

@@ -39,7 +39,10 @@ use create_surface::mod_create_surface::create_win32_surface;
 // Standard Library Imports
 use core::ffi::c_char;
 use std::thread;
-use std::{ptr::null, sync::Arc};
+use std::{
+    ptr::null,
+    sync::{Arc, Mutex},
+};
 
 // Libloading Imports (Library Loading Imports)
 use libloading::Library;
@@ -52,7 +55,7 @@ use vk_sys::{
 };
 
 // Async Compute Thingy's
-use smol::*;
+use smol::Executor;
 
 use crate::device_creation::mod_device_creation::create_graphics_queue;
 
@@ -93,30 +96,19 @@ impl VkSysEngine {
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
-        let mut window_init: bool = false;
-        let app_window_creator = Arc::new(AppWindow::new(
-            "Test - Vulkan Engine",
-            800,
-            600,
-            false
-        ));
-        AppWindow::run_engine_window(
-            AppWindow::create_event_loop(),
-            "Test - Vulkan Engine",
-            800,
-            600,
-            false
-        );
-        let (lock, cvar) = &*app_window_creator.initalized_window;
-        let mut ready = lock.lock().unwrap();
-        while !*ready {
-            ready = cvar.wait(ready).unwrap();
-        }
-        println!("Window has been made");
+        let executor: Executor = Executor::new();
+        println!("Running");
+        smol::block_on(async {
+            AppWindow::run_engine_window(&executor, "Test - Vulkan Engine", 800, 600, false);
+        });
+        self.vulkan_init();
+    }
+
+    fn vulkan_init(&mut self) {
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
-
+        println!("Test Test Test Test");
         let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
         // Spawning new thread for Instance Layer & Extension Counting & Checking
         let vk_info_handle = thread::spawn(move || {
@@ -210,23 +202,12 @@ impl VkSysEngine {
             &device_pointers,
             &physical_device,
             &logical_device,
-        );  
-        if app_window_creator.window.lock().as_ref().unwrap().as_ref().is_some() {
-            println!("Window has been created");
-        } else {
-            panic!("Window failed to be initalized on time!");
-        }
-        let binding = app_window_creator.window.lock();
-        let app_window_creator_ext = binding.as_ref().unwrap().as_ref();
-        let app_window = match app_window_creator_ext {
-            Some(w) => w,
-            None => panic!("Window Failed to Initalize, timer panic failed"),
-        };
+        );
         let surface = create_win32_surface(
             &instance_pointers,
             &instance,
             &app_window,
-            &allocation_callbacks
+            &allocation_callbacks,
         );
         Self::main_loop();
         unsafe {
@@ -284,6 +265,7 @@ impl Default for VkSysEngine {
     }
 }
 
+#[doc(hidden)]
 fn main() {
     let mut game_engine: VkSysEngine = VkSysEngine::new(
         800,

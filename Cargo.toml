@@ -12,10 +12,12 @@ categories = ["Game development", "Game engines", "Rendering"]
 
 [dependencies]
 libloading = "0.8.7"
-mini_log = "0.1.0"
+mini_log = "0.4.0"
+raw-window-handle = "=0.4.3"
 smol = "2.0.2"
 vk-sys = "0.7.0"
-winit = "0.30.11"
+winit = "0.26.1"
+winit-modular = {git = "https://github.com/jakobeha/winit-modular", branch = "main"}
 
 [profile.dev]
 opt-level = 0
