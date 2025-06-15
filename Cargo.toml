@@ -11,13 +11,12 @@ keywords = ["3d", "engine", "game", "graphics"]
 categories = ["Game development", "Game engines", "Rendering"]
 
 [dependencies]
+async-winit = "0.2.1"
 libloading = "0.8.7"
 mini_log = "0.4.0"
-raw-window-handle = "=0.4.3"
+raw-window-handle = "0.5.2"
 smol = "2.0.2"
 vk-sys = "0.7.0"
-winit = "0.26.1"
-winit-modular = {git = "https://github.com/jakobeha/winit-modular", branch = "main"}
 
 [profile.dev]
 opt-level = 0

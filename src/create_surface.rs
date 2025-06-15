@@ -1,36 +1,49 @@
 pub mod mod_create_surface {
-    use core::ffi::c_void;
-    use core::ptr::{null, null_mut};
+    use async_winit::window::Window;
+    use async_winit::ThreadSafety;
+    use raw_window_handle::HasRawWindowHandle;
+    use core::ptr::{null};
     use vk_sys::{
         AllocationCallbacks, Instance, InstancePointers, NULL_HANDLE,
         STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, SUCCESS, SurfaceKHR,
         Win32SurfaceCreateInfoKHR,
     };
-    use winit::window::Window;
-    #[cfg(target_os = "windows")]
-    pub fn create_win32_surface(
+
+    pub fn create_surface<TS: ThreadSafety>(
         instance_ptrs: &InstancePointers,
         instance: &Instance,
-        window: &Window,
+        window: &Window<TS>,
         p_allocator: *const AllocationCallbacks,
-    ) -> SurfaceKHR {
-        use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+    ) -> SurfaceKHR 
+    where for<'a> &'a Window<TS>: HasRawWindowHandle{
+        use raw_window_handle::{RawWindowHandle};
 
         let mut surface: SurfaceKHR = NULL_HANDLE;
         let p_surface = &mut surface as *mut SurfaceKHR;
 
-        let window_handle = HasRawWindowHandle::raw_window_handle(window);
+        let window_handle = window.raw_window_handle();
 
         // Extract hwnd and hinstance safely
         let (hwnd, hinstance) = match window_handle {
-            RawWindowHandle::Win32(handle) => {
-                (handle.hwnd as *mut c_void, handle.hinstance as *mut c_void)
-            }
-            _ => {
-                eprintln!("Unsupported window handle type");
-                return surface;
-            }
+            RawWindowHandle::UiKit(ui_kit_window_handle) => todo!(),
+            RawWindowHandle::AppKit(app_kit_window_handle) => todo!(),
+            RawWindowHandle::Orbital(orbital_window_handle) => todo!(),
+            RawWindowHandle::Xlib(xlib_window_handle) => todo!(),
+            RawWindowHandle::Xcb(xcb_window_handle) => todo!(),
+            RawWindowHandle::Wayland(wayland_window_handle) => todo!(),
+            RawWindowHandle::Drm(drm_window_handle) => todo!(),
+            RawWindowHandle::Gbm(gbm_window_handle) => todo!(),
+            RawWindowHandle::Win32(win32_window_handle) => (win32_window_handle.hwnd, win32_window_handle.hinstance),
+            RawWindowHandle::WinRt(win_rt_window_handle) => todo!(),
+            RawWindowHandle::Web(web_window_handle) => todo!(),
+            RawWindowHandle::AndroidNdk(android_ndk_window_handle) => todo!(),
+            RawWindowHandle::Haiku(haiku_window_handle) => todo!(),
+            _ => panic!("Unable to find a RawWindowHandle for your OS!")
         };
+
+        if hwnd.is_null() || hinstance.is_null() {
+            panic!("Invalid Handles");
+        }
 
         let win32_surface_khr_create_info: Win32SurfaceCreateInfoKHR = Win32SurfaceCreateInfoKHR {
             sType: STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
@@ -59,5 +72,4 @@ pub mod mod_create_surface {
         }
     }
 
-    // TODO: Add X11, Xcb, and Wayland support for surfaces.
 }

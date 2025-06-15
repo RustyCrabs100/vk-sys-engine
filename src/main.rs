@@ -12,6 +12,8 @@
 
 // Personal file loading
 mod vulkan_loader;
+use async_winit::window::Window;
+use async_winit::ThreadSafety;
 use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan};
 mod utils;
 use utils::mod_utils::make_version;
@@ -35,13 +37,13 @@ use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
 };
 mod create_surface;
-use create_surface::mod_create_surface::create_win32_surface;
+use create_surface::mod_create_surface::create_surface;
 // Standard Library Imports
 use core::ffi::c_char;
 use std::thread;
 use std::{
     ptr::null,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
 
 // Libloading Imports (Library Loading Imports)
@@ -55,7 +57,7 @@ use vk_sys::{
 };
 
 // Async Compute Thingy's
-use smol::Executor;
+use smol::{block_on};
 
 use crate::device_creation::mod_device_creation::create_graphics_queue;
 
@@ -96,15 +98,16 @@ impl VkSysEngine {
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
-        let executor: Executor = Executor::new();
+        let engine_window_struct: &'static mut EngineWindow = Box::leak(Box::new(block_on(EngineWindow::new())));
         println!("Running");
+        self.vulkan_init(&engine_window_struct.window);
         smol::block_on(async {
-            AppWindow::run_engine_window(&executor, "Test - Vulkan Engine", 800, 600, false);
+            EngineWindow::run_engine_window(engine_window_struct).await;
         });
-        self.vulkan_init();
     }
 
-    fn vulkan_init(&mut self) {
+    /// Handles Vulkan Initalization
+    fn vulkan_init<TS: ThreadSafety>(&mut self, app_window: &Window<TS>) {
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
@@ -203,10 +206,10 @@ impl VkSysEngine {
             &physical_device,
             &logical_device,
         );
-        let surface = create_win32_surface(
+        let surface = create_surface(
             &instance_pointers,
             &instance,
-            &app_window,
+            app_window,
             &allocation_callbacks,
         );
         Self::main_loop();

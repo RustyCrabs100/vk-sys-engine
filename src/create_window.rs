@@ -4,19 +4,13 @@
 #![warn(unused_variables)]
 
 pub mod mod_window {
-    use smol::{future::block_on, Executor, LocalExecutor, Task};
-    use std::{
-        io::Error,
-        sync::{Arc, Condvar, Mutex},
-    };
-    use winit::{
-        dpi::{LogicalPosition, LogicalSize, Position, Size},
+    use async_winit::{
+        ThreadUnsafe,
+        event_loop::{EventLoop, EventLoopWindowTarget},
         window::{Window, WindowAttributes},
     };
-    use winit_modular::{
-        event::{Event, WindowEvent},
-        event_loop::{ControlFlow, EventLoop},
-        future::FutEventLoop,
+    use smol::{
+        future::{FutureExt},
     };
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavailable)
@@ -28,122 +22,72 @@ pub mod mod_window {
         pub fn mouse_input_handler() {}
     }
 
-    #[derive(Default)]
-    pub struct AppWindow {
-        pub window: Arc<Mutex<Option<Window>>>,
-        pub window_attr: WindowAttributes,
-        pub initialized_window: Arc<(Mutex<bool>, Condvar)>,
-        pub window_count: u32,
+    pub(crate) struct EngineWindow {
+        pub(crate) window_attrs: WindowAttributes,
+        pub(crate) window: Window<ThreadUnsafe>,
     }
 
-    impl AppWindow {
-        pub fn new(title: &str, width: u32, height: u32, resizable: bool) -> Self {
-            let mut attrs = WindowAttributes::default();
-            attrs.title = title.to_string();
-            attrs.inner_size = Some(LogicalSize::new(width, height).into());
-            attrs.resizable = resizable;
-
+    impl EngineWindow {
+        pub async fn new() -> Self {
             Self {
-                window: Arc::new(Mutex::new(None)),
-                window_attr: attrs,
-                initialized_window: Arc::new((Mutex::new(false), Condvar::new())),
-                window_count: 0,
+                window_attrs: WindowAttributes::default(),
+                window: Self::create_window().await,
             }
         }
 
-        pub async fn create_event_loop() -> FutEventLoop {
-            EventLoop::new()
-        }
+        pub async fn run_engine_window(&'static mut self) {
+            let evl: EventLoop<ThreadUnsafe> = Self::create_event_loop().await;
+            let window_target: EventLoopWindowTarget = evl.window_target().clone();
 
-        // TODO: Add back in the Fullscreen Option
-        pub async fn create_window<'a>(
-            &'static mut self,
-            event_loop: &EventLoop,
-        ) -> Result<Arc<Mutex<Option<Window>>>, Error> {
-            let window = Arc::new(Mutex::new(Some(
-                event_loop
-                    .create_window(|builder| {
-                        builder
-                            .with_title(&self.window_attr.title)
-                            .with_inner_size(
-                                self.window_attr
-                                    .inner_size
-                                    .unwrap_or(Size::new(LogicalSize::new(800, 600))),
-                            )
-                            .with_resizable(self.window_attr.resizable)
-                            .with_transparent(self.window_attr.transparent)
-                            .with_decorations(self.window_attr.decorations)
-                            .with_visible(self.window_attr.visible)
-                            .with_min_inner_size(
-                                self.window_attr
-                                    .min_inner_size
-                                    .unwrap_or(Size::new(LogicalSize::new(800, 600))),
-                            )
-                            .with_max_inner_size(
-                                self.window_attr
-                                    .max_inner_size
-                                    .unwrap_or(Size::new(LogicalSize::new(800, 600))),
-                            )
-                            .with_position(
-                                self.window_attr
-                                    .position
-                                    .unwrap_or(Position::new(LogicalPosition::new(800, 600))),
-                            )
-                    })
-                    .await
-                    .unwrap(),
-            )));
+            evl.block_on(async move {
+                loop {
+                    window_target.resumed().await;
 
-            self.window_count += 1;
-            Ok(window)
-        }
+                    let window: Window<ThreadUnsafe> = self.window.to_owned();
 
-        pub async fn run_engine_window<'a>(
-            executor: &'static Executor<'a>,
-            title: &'static str,
-            width: u32,
-            height: u32,
-            resizable: bool,
-        ) -> Result<(), Error> {
-            winit_modular::run(move || {
-                block_on(Self::runner(executor, title, width, height, resizable));
+                    let handle_event = Self::event_handler(&window_target, window).await;
+
+                    self.window = handle_event;
+                }
             });
         }
 
-        async fn runner<'a>(
-            executor: &'static Executor<'a>,
-            title: &str,
-            width: u32,
-            height: u32,
-            resizable: bool,
-        ) {
-            let mut app = AppWindow::new(title, width, height, resizable);
-            let event_loop = AppWindow::create_event_loop().await.await;
-            app.window = app.create_window(&event_loop).await.unwrap();
+        async fn create_event_loop() -> EventLoop<ThreadUnsafe> {
+            EventLoop::new()
+        }
 
-            let window_clone = app.window.clone();
-            executor
-                .spawn(async move {
-                    event_loop
-                        .run_async(move |event, control_flow, window_target| {
-                            *control_flow = ControlFlow::Poll;
-                            match event {
-                                Event::WindowEvent {
-                                    event: WindowEvent::CloseRequested,
-                                    ..
-                                } => {
-                                    println!("Close requested");
-                                    *control_flow = ControlFlow::ExitApp;
-                                }
-                                Event::LoopDestroyed => {
-                                    println!("Window Closed");
-                                }
-                                _ => (),
-                            }
-                        })
-                        .await;
-                })
-                .detach();
+        async fn event_handler(
+            window_target: &EventLoopWindowTarget,
+            window: Window<ThreadUnsafe>,
+        ) -> Window<ThreadUnsafe> {
+            let close = async {
+                window.close_requested().wait().await;
+                println!("Closing");
+                true
+            };
+
+            let suspend = async {
+                window_target.suspended().wait().await;
+                false
+            };
+
+            let request_redraw = async {
+                window.redraw_requested();
+                false
+            };
+
+            let needs_exit = request_redraw.or(close).or(suspend).await;
+
+            if needs_exit {
+                window_target.exit().await;
+            }
+
+            window
+        }
+
+        async fn create_window() -> Window<ThreadUnsafe> {
+            let window: Window<ThreadUnsafe> = Window::<ThreadUnsafe>::new().await.unwrap();
+            window
         }
     }
 }
