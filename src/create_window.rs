@@ -5,13 +5,12 @@
 
 pub mod mod_window {
     use async_winit::{
-        ThreadUnsafe,
-        event_loop::{EventLoop, EventLoopWindowTarget},
-        window::{Window, WindowAttributes},
+        event_loop::{EventLoop, EventLoopWindowTarget}, window::{Window, WindowAttributes}, ThreadSafety, ThreadUnsafe
     };
     use smol::{
         future::{FutureExt},
     };
+    use std::fmt;
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavailable)
     pub mod input_handler {
@@ -22,32 +21,34 @@ pub mod mod_window {
         pub fn mouse_input_handler() {}
     }
 
+    #[derive(Clone)]
     pub(crate) struct EngineWindow {
         pub(crate) window_attrs: WindowAttributes,
-        pub(crate) window: Window<ThreadUnsafe>,
+        pub(crate) window: Option<Window<ThreadUnsafe>>,
     }
 
     impl EngineWindow {
         pub async fn new() -> Self {
             Self {
                 window_attrs: WindowAttributes::default(),
-                window: Self::create_window().await,
+                window: None,
             }
         }
 
-        pub async fn run_engine_window(&'static mut self) {
-            let evl: EventLoop<ThreadUnsafe> = Self::create_event_loop().await;
+        pub async fn run_engine_window(&'static mut self)  {
+            println!("Running!");
+            let evl: EventLoop<ThreadUnsafe> = smol::block_on(Self::create_event_loop());
             let window_target: EventLoopWindowTarget = evl.window_target().clone();
 
             evl.block_on(async move {
                 loop {
                     window_target.resumed().await;
 
-                    let window: Window<ThreadUnsafe> = self.window.to_owned();
-
-                    let handle_event = Self::event_handler(&window_target, window).await;
-
-                    self.window = handle_event;
+                    let window_proper = match &self.window {
+                        Some(x) => x,
+                        None => &Self::create_window().await,
+                    };
+                    let _ = smol::block_on(Self::event_handler(&window_target, window_proper));
                 }
             });
         }
@@ -56,10 +57,10 @@ pub mod mod_window {
             EventLoop::new()
         }
 
-        async fn event_handler(
+        async fn event_handler<'a>(
             window_target: &EventLoopWindowTarget,
-            window: Window<ThreadUnsafe>,
-        ) -> Window<ThreadUnsafe> {
+            window: &'a Window<ThreadUnsafe>,
+        ) -> &'a Window<ThreadUnsafe> {
             let close = async {
                 window.close_requested().wait().await;
                 println!("Closing");
@@ -86,8 +87,19 @@ pub mod mod_window {
         }
 
         async fn create_window() -> Window<ThreadUnsafe> {
-            let window: Window<ThreadUnsafe> = Window::<ThreadUnsafe>::new().await.unwrap();
+            println!("Debugging is fun.... (sarcasim)");
+            let window: Window<ThreadUnsafe> = Window::<ThreadUnsafe>::new().await.expect("??");
+            println!("Ok... Odd...");
             window
+        }
+    }
+
+    impl fmt::Debug for EngineWindow {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("EngineWindow")
+                .field("window", &self.window.as_ref().map(|_| "Window<ThreadUnsafe>"))
+                .field("window_attrs", &"WindowAttributes")
+                .finish()
         }
     }
 }

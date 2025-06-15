@@ -13,7 +13,7 @@
 // Personal file loading
 mod vulkan_loader;
 use async_winit::window::Window;
-use async_winit::ThreadSafety;
+use async_winit::{ThreadSafety, ThreadUnsafe};
 use vulkan_loader::mod_vulkan_loader::{close_vulkan, load_vulkan};
 mod utils;
 use utils::mod_utils::make_version;
@@ -57,7 +57,7 @@ use vk_sys::{
 };
 
 // Async Compute Thingy's
-use smol::{block_on};
+use smol::{block_on, LocalExecutor};
 
 use crate::device_creation::mod_device_creation::create_graphics_queue;
 
@@ -98,12 +98,24 @@ impl VkSysEngine {
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
     pub fn run(&mut self) {
-        let engine_window_struct: &'static mut EngineWindow = Box::leak(Box::new(block_on(EngineWindow::new())));
-        println!("Running");
-        self.vulkan_init(&engine_window_struct.window);
+        // This is done to get a &'static
+        let local_exec = LocalExecutor::new();
+        let engine_window_struct: &'static mut EngineWindow = Box::leak(Box::new(smol::block_on(EngineWindow::new())));
+        let ews_clone = engine_window_struct.clone();
+        let _event_loop_handle = local_exec.spawn(
+            EngineWindow::run_engine_window(engine_window_struct)
+        );
         smol::block_on(async {
-            EngineWindow::run_engine_window(engine_window_struct).await;
+            while ews_clone.window.is_none() {
+                smol::Timer::after(std::time::Duration::from_millis(10)).await;
+            }
         });
+        let engine_window_proper: &Window<ThreadUnsafe> = ews_clone
+            .window
+            .as_ref()
+            .expect("Window Not Yet Made");
+        println!("Running");
+        self.vulkan_init(&engine_window_proper);
     }
 
     /// Handles Vulkan Initalization
