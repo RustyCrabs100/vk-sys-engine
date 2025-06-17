@@ -1,7 +1,23 @@
 #language slang legacy
 
+// Used for Greedy Meshing
+static const uint GRID_SIZE_X = 64;
+static const uint GRID_SIZE_Y = 64;
+
+// Merged Quad Data
+struct Quad {
+    int value; // Identifier
+    int2 start; // Top-left Cell Coord
+    int2 size; // Dimensions of Quad
+}
+
+// Occupancy Grid: Asumed to be a 2D Texture
+readonly Texture2D<int> cells : register(t0);
+// Output Buffer for Merged Quads (SSBO)
+RWStructuredBuffer<Quad> quads;
+
 // Source Image (2D texture)
-Texture2D<float4> InTex;
+readonly Texture2D<float4> InTex;
 // Read Write Texture for writing to the Screen
 RWTexture2D<float4> OutTex;
 
@@ -14,7 +30,67 @@ cbuffer ResizeParams : register(b0) {
 // Group Shared Variable sotring the Input Textures Dimensions
 // This is for Accessing Values without Querying the Texture
 groupshared uint2 dims[2];
+groupshared bool merged[GRID_SIZE_X][GRID_SIZE_Y];
 
+func greedyMeshing()->void {
+    uint quadIndex = 0;
+    // Iterate over each cell in the grid
+    for (uint x = 0; x < GRID_SIZE_X; ++x) {
+        for (uint y = 0; y < GRID_SIZE_Y; ++y) {
+            // Skips Merged Cells
+            if (merged[x][y]) continue;
+            // Load current Cell Value
+            int currentVal = cells.Load(int3(x, y, 0));
+            // 0 = empty
+            if (currentVal == 0) {
+                merged[x][y] = true;
+                continue;
+            }
+
+            // Determine Quad Width
+            // Init as 1 since a QuadW as 0 doesnt exist.
+            uint quadWidth = 1;
+            for (uint tx = x + 1; tx < GRID_SIZE_X; ++tx) {
+                if (merged[tx][y]) break;
+                int tempVal = cells.Load(int3(tx, y, 0));
+                if (tempVal != currentVal) break;
+                quadWidth++;
+            }
+
+            // Determine Quad Height
+            // Init as 1 since QuadH as 0 doesnt exist
+            uint quadHeight = 1;
+            bool validRow = true;
+            for (uint ty = y + 1; ty < GRID_SIZE_Y && validRow; ++ty) {
+                for (uint tx = x; tx < x + quadWidth; ++tx) {
+                    if (merged[tx][ty]) {
+                        validRow = false;
+                        break;
+                    }
+                    int tempVal = cells.Load(int3(tx, ty, 0));
+                    if (tempVal != currentVal) {
+                        validRow = false;
+                        break;
+                    }
+                }
+                if (validRow) quadHeight++;
+            }
+            // Marks cells as Merged.
+            for (uint ty = y; ty < y + quadHeight; ++ty) {
+                for (uint tx = x; tx < x + quadWidth; ++tx) {
+                    merged[tx][ty] = true;
+                }
+            }
+            // Assemble && Output Merged Quad
+            Quad q;
+            q.value = currentVal;
+            q.start = int2(x, y);
+            q.size = int2(quadWidth, quadHeight);
+            quads[quadIndex] = q;
+            quadIndex++;
+        }
+    }
+}
 
 func bipolation_fn(
     float useBilinear,
@@ -75,6 +151,9 @@ func computeMain(
     GroupMemoryBarrierWithGroupSync();
     // Checks if Coordinates are in Bounds ; Early Exit if yes
     if (dtid.x >= dims[1].x || dtid.y >= dims[1].y) return;
+    if (gtid.y == 0 && gtid.x == 0) {
+        greedyMeshing();
+    }
     // Get Parameters
     float scaleFactor = params.x;
     float useBilinear = params.y;
