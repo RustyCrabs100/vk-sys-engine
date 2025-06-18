@@ -12,6 +12,7 @@ categories = ["Game development", "Game engines", "Rendering"]
 
 [dependencies]
 async-winit = "0.2.1"
+futures = "0.3.31"
 libloading = "0.8.7"
 mini_log = "0.4.0"
 raw-window-handle = "0.5.2"

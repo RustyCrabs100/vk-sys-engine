@@ -31,7 +31,7 @@ use vk_debugger::mod_vk_debugger::{
 mod device_creation;
 mod instance_creation;
 use device_creation::mod_device_creation::{
-    create_logical_device, pick_physical_device, return_device_extensions, return_device_layers,
+    create_logical_device, pick_physical_device, return_device_extensions, return_device_layers, create_graphics_queue
 };
 use instance_creation::mod_instance_creation::{
     create_instance, return_instance_extensions, return_instance_layers,
@@ -40,10 +40,12 @@ mod create_surface;
 use create_surface::mod_create_surface::create_surface;
 // Standard Library Imports
 use core::ffi::c_char;
+use std::cell::RefCell;
 use std::thread;
 use std::{
     ptr::null,
     sync::{Arc},
+    rc::Rc
 };
 
 // Libloading Imports (Library Loading Imports)
@@ -57,9 +59,8 @@ use vk_sys::{
 };
 
 // Async Compute Thingy's
-use smol::{block_on, LocalExecutor};
-
-use crate::device_creation::mod_device_creation::create_graphics_queue;
+use smol::{ LocalExecutor};
+use futures::channel::oneshot;
 
 // Minimal Debugging Library Imports (mini_log Imports)
 /// Defined to contain if debugging is enabled
@@ -94,26 +95,24 @@ impl VkSysEngine {
             engine_version,
             application_version,
         }
-    }
+    } 
     /// Begins to run the game engine
     /// Logging using mini_log planned for the future
-    pub fn run(&mut self) {
-        // This is done to get a &'static
+    pub async fn run(&mut self) {
+        println!("testing 1");
+        let (oscs, mut oscr) = oneshot::channel::<Rc<RefCell<Window<ThreadUnsafe>>>>();
         let local_exec = LocalExecutor::new();
-        let engine_window_struct: &'static mut EngineWindow = Box::leak(Box::new(smol::block_on(EngineWindow::new())));
-        let ews_clone = engine_window_struct.clone();
-        let _event_loop_handle = local_exec.spawn(
-            EngineWindow::run_engine_window(engine_window_struct)
-        );
-        smol::block_on(async {
-            while ews_clone.window.is_none() {
-                smol::Timer::after(std::time::Duration::from_millis(10)).await;
-            }
-        });
-        let engine_window_proper: &Window<ThreadUnsafe> = ews_clone
-            .window
+        println!("testing 2");
+        let engine_window_struct_rc: Rc<RefCell<EngineWindow>> = Rc::new(RefCell::new(smol::block_on(EngineWindow::new())));
+        println!("testing 3");
+        let _event_loop_handle = EngineWindow::run_engine_window(engine_window_struct_rc.clone(), oscs).await;
+        println!("testing 4");
+        let window_rc_ref_cell = oscr.await.expect("Did not recieve window");
+        println!("testing 5");
+        let engine_window_proper: &Window<ThreadUnsafe> = &window_rc_ref_cell
             .as_ref()
-            .expect("Window Not Yet Made");
+            .borrow()
+            .clone();
         println!("Running");
         self.vulkan_init(&engine_window_proper);
     }
@@ -123,7 +122,6 @@ impl VkSysEngine {
         let vulkan_lib: Library = unsafe { load_vulkan().expect("Unable to load Vulkan") };
         let allocation_callbacks: AllocationCallbacks = return_allocation_callbacks();
         let entry_points: Arc<EntryPoints> = Arc::new(unsafe { return_entry_points(&vulkan_lib) });
-        println!("Test Test Test Test");
         let entry_points_copy: Arc<EntryPoints> = Arc::clone(&entry_points);
         // Spawning new thread for Instance Layer & Extension Counting & Checking
         let vk_info_handle = thread::spawn(move || {
@@ -289,7 +287,7 @@ fn main() {
         make_version(0, 1, 0, 0),
         make_version(0, 1, 0, 0),
     );
-    game_engine.run();
+    smol::block_on(game_engine.run());
     println!("Working so far");
 }
 

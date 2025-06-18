@@ -7,10 +7,11 @@ pub mod mod_window {
     use async_winit::{
         event_loop::{EventLoop, EventLoopWindowTarget}, window::{Window, WindowAttributes}, ThreadSafety, ThreadUnsafe
     };
+    use futures::channel::oneshot;
     use smol::{
         future::{FutureExt},
     };
-    use std::fmt;
+    use std::{fmt, rc::Rc, cell::RefCell};
 
     /// Handles Keyboard and Mouse Inputs (Currently Unavailable)
     pub mod input_handler {
@@ -35,20 +36,31 @@ pub mod mod_window {
             }
         }
 
-        pub async fn run_engine_window(&'static mut self)  {
+        pub async fn run_engine_window(mut self_: Rc<RefCell<Self>>, oscs: oneshot::Sender<Rc<RefCell<Window<ThreadUnsafe>>>>)  {
             println!("Running!");
             let evl: EventLoop<ThreadUnsafe> = smol::block_on(Self::create_event_loop());
             let window_target: EventLoopWindowTarget = evl.window_target().clone();
 
+            let mut maybe_oscs: Option<oneshot::Sender<Rc<RefCell<Window<ThreadUnsafe>>>>> = Some(oscs);
+
             evl.block_on(async move {
                 loop {
+                    println!("testing 1.rew");
                     window_target.resumed().await;
+                    println!("testing 2.rew");
 
-                    let window_proper = match &self.window {
-                        Some(x) => x,
-                        None => &Self::create_window().await,
-                    };
-                    let _ = smol::block_on(Self::event_handler(&window_target, window_proper));
+                    let mut engine = self_.borrow_mut();
+
+                    if engine.window.is_none() {
+                        engine.window = Some(Self::create_window().await);
+                    }
+
+                    let window_proper = engine.window.clone().expect("Window Should be Initalized");
+                    let _ = Self::event_handler(&window_target, &window_proper).await;
+                    if let Some(sender) = maybe_oscs.take() {
+                        println!("Sending Data!");
+                        let _ = sender.send(Rc::new(RefCell::new(window_proper)));
+                    }
                 }
             });
         }
@@ -60,7 +72,7 @@ pub mod mod_window {
         async fn event_handler<'a>(
             window_target: &EventLoopWindowTarget,
             window: &'a Window<ThreadUnsafe>,
-        ) -> &'a Window<ThreadUnsafe> {
+        )  {
             let close = async {
                 window.close_requested().wait().await;
                 println!("Closing");
@@ -81,9 +93,9 @@ pub mod mod_window {
 
             if needs_exit {
                 window_target.exit().await;
+            } else {
+                drop(window);
             }
-
-            window
         }
 
         async fn create_window() -> Window<ThreadUnsafe> {
