@@ -27,17 +27,26 @@ This is just a *small* project I'm working on with a friend, so expect nothing e
 
 These are **REQUIRED ONLY** if your going to ***COMPILE*** the project. 
 
+### Rendering 
  1. The Vulkan SDK: functions are dynamically loaded, meaning you'll need the VulkanSDK by LunarG to run this. 
     > This is because vk_sys doesn't automatically call the Vulkan Function Pointers, 
     unlike vulkano for example.
  2. The Slang Shader Language Compiler
     > This is for compiling the Slang Shader Language that we use for writing our Shaders.
  3. vk-sys: this is an **EXTREMELY** light wrapper around vulkan. 
+### Library Loading
  4. libloading: this is used to dynamically load in vulkan and it's function pointers. 
- 4. winit: this is used to create the window and handle input from the keyboard & mouse.
+### Windowing
+ 5. async-winit: this is used to create the window and handle input from the keyboard & mouse asynchronously.
     > This is because minifb doesn't provide a hwnd or an hinstance for vulkan, meaning that minifb can't be used for this project. This does increase the amount of bloat significantly. 
- 6. mini_log: this is used to log the program.
- 7. smol: this is used to be a lightweight async runtime.
+    >> Winit is not Async, meaning we can't use that. It is still technically asynchronous. 
+ 6. raw-window-handle: this is used to get a window's handles.
+### Logging
+ 7. mini_log: this is used to log the program.
+    > mini_log currently isn't being used, but is planned to be.
+### Asynchronous Runtime
+ 8. smol: this is used to be a lightweight async runtime.
+ 9. futures: this provides core features for our async runtime.
 
  These are **REQUIRED NO MATTER WHAT** 
   * Vulkan Drivers for your GPU  
