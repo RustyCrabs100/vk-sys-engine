@@ -93,6 +93,7 @@ pub mod mod_window {
 
             if needs_exit {
                 window_target.exit().await;
+
             } else {
                 drop(window);
             }
