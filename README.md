@@ -1,3 +1,6 @@
+# Note 
+This repository is no longer being maintained. The new version of this is using a different crate for the Vulkan API. The repository is called ash-engine, and will have different focuses than this repository.
+
 # vk-sys-engine
 A small game engine written in rust using vk-sys as it's Graphics API
 
